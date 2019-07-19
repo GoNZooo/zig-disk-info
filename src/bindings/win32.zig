@@ -1,9 +1,9 @@
 const std = @import("std");
 const windows = std.os.windows;
 
-const HWND = windows.HANDLE;
+pub const HWND = windows.HANDLE;
 const HMENU = windows.HANDLE;
-const HINSTANCE = windows.HANDLE;
+pub const HINSTANCE = windows.HANDLE;
 
 // pub const WNDCLASS = struct {
 //     style: windows.UINT = 0,
