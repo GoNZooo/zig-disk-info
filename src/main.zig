@@ -6,28 +6,69 @@ const warn = std.debug.warn;
 const win32 = @import("bindings/win32.zig");
 const windows = std.os.windows;
 
-pub fn main(
-    instance: win32.HINSTANCE,
-    previousInstance: win32.HINSTANCE,
+// LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
+//     if (message == WM_DESTROY) {
+//         // If we receive the destroy message, then quit the program.
+//         PostQuitMessage(0);
+//         return 0;
+//     } else {
+//         // We don't handle this message. Use the default handler.
+//         return DefWindowProc(window, message, wParam, lParam);
+//     }
+// }
+
+export fn WindowProcedure(
+    window: win32.HWND,
+    message: windows.UINT,
+    wParam: *windows.UINT,
+    lParam: *windows.LONG,
+) ?*windows.LONG {
+    // WM_DESTROY
+    if (message == 2) {
+        return null;
+    } else {
+        return null;
+    }
+}
+
+export fn WinMain(
+    instance: windows.HINSTANCE,
+    previousInstance: windows.HINSTANCE,
     commandLine: windows.LPSTR,
-    commandShow: i32,
-) anyerror!void {
-    const class_name = "className";
-    const window_name = "windowName";
-    warn("wut\n");
-    const result = win32.CreateWindowEx(
+    commandShow: windows.INT,
+) windows.INT {
+    // _ = win32.MessageBoxA(null, c"hello", c"title", 0);
+    // warn("wut\n");
+
+    // set up windowClass = WNDCLASS struct, set lpszClassName to a certain class name
+    // also reference WindowProcedure in `lpfnWndProc` field
+    // WNDCLASS windowClass = {};
+    // windowClass.style = CS_HREDRAW | CS_VREDRAW;
+    // windowClass.lpfnWndProc = WindowProcedure;
+    // windowClass.hInstance = instance;
+    // windowClass.lpszClassName = "MyWindowClass";
+    // windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+    // windowClass.hbrBackground = (HBRUSH) (COLOR_WINDOW + 1);
+    // RegisterClass(&windowClass);
+
+    // call RegisterClass(&windowClass)
+    const window = win32.CreateWindowExA(
         0,
-        &class_name,
-        &window_name,
+        c"class_name", // set this to the same class name you used before
+        c"window_name",
+        0,
         0,
         0,
         200,
         200,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
+        null,
+        null,
+        instance,
+        null,
     );
-    warn("{}\n", result);
+    win32.ShowWindow(window, commandShow);
+
+    // warn("{}\n", result);
+
+    return 0;
 }

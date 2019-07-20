@@ -5,13 +5,13 @@ pub const HWND = windows.HANDLE;
 const HMENU = windows.HANDLE;
 pub const HINSTANCE = windows.HANDLE;
 
-// pub const WNDCLASS = struct {
-//     style: windows.UINT = 0,
-//     windowProcedure: windows.WNDPROC = undefined,
-//     extraClassBytes: i32 = 0,
-//     extraWindowBytes: i32 = 0,
-//     instance:
-// };
+pub const WNDCLASS = struct {
+    style: windows.UINT = 0,
+    windowProcedure: ?windows.WNDPROC = undefined,
+    extraClassBytes: windows.INT = 0,
+    extraWindowBytes: windows.INT = 0,
+    instance: HINSTANCE,
+};
 
 pub extern "kernel32" stdcallcc fn GetDiskFreeSpaceA(
     root_path_name: windows.LPCSTR,
@@ -37,17 +37,26 @@ pub extern "kernel32" stdcallcc fn GetLogicalDriveStringsW(
     buffer: windows.LPWSTR,
 ) windows.DWORD;
 
-pub extern "user32" stdcallcc fn CreateWindowEx(
+pub extern "user32" stdcallcc fn CreateWindowExA(
     exStyle: windows.DWORD,
     className: windows.LPCSTR,
     windowName: windows.LPCSTR,
     style: windows.DWORD,
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
-    windowParent: HWND,
-    menu: HMENU,
+    x: windows.INT,
+    y: windows.INT,
+    width: windows.INT,
+    height: windows.INT,
+    windowParent: ?HWND,
+    menu: ?HMENU,
     instance: windows.HINSTANCE,
-    parameters: windows.LPVOID,
+    parameters: ?windows.LPVOID,
 ) HWND;
+
+pub extern "user32" stdcallcc fn ShowWindow(windowHandle: HWND, commandShow: windows.INT) void;
+
+pub extern "user32" stdcallcc fn MessageBoxA(
+    hWnd: ?HWND,
+    lpText: ?windows.LPCTSTR,
+    lpCaption: ?windows.LPCTSTR,
+    uType: windows.UINT,
+) c_int;
