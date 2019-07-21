@@ -4,13 +4,34 @@ const windows = std.os.windows;
 pub const HWND = windows.HANDLE;
 const HMENU = windows.HANDLE;
 pub const HINSTANCE = windows.HANDLE;
+pub const WNDPROC = fn (
+    windowHandle: HWND,
+    message: windows.UINT,
+    wParam: *windows.UINT,
+    lParam: *windows.LONG,
+) ?*windows.LONG;
 
 pub const WNDCLASS = struct {
     style: windows.UINT = 0,
-    windowProcedure: ?windows.WNDPROC = undefined,
+    windowProcedure: ?WNDPROC = undefined,
     extraClassBytes: windows.INT = 0,
     extraWindowBytes: windows.INT = 0,
-    instance: HINSTANCE,
+    instance: ?HINSTANCE = undefined,
+};
+
+pub const ClassStyle = enum {
+    VREDRAW = 0x0001,
+    HREDRAW = 0x0002,
+    BYTEALIGNCLIENT = 0x1000,
+    BYTEALIGNWINDOW = 0x2000,
+    CLASSDC = 0x0040,
+    DBLCLKS = 0x0008,
+    DROPSHADOW = 0x00020000,
+    GLOBALCLASS = 0x4000,
+    NOCLOSE = 0x0200,
+    OWNDC = 0x0020,
+    PARENTDC = 0x0080,
+    SAVEBITS = 0x0800,
 };
 
 pub extern "kernel32" stdcallcc fn GetDiskFreeSpaceA(
