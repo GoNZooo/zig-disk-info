@@ -4,22 +4,44 @@ const windows = std.os.windows;
 pub const HWND = windows.HANDLE;
 const HMENU = windows.HANDLE;
 pub const HINSTANCE = windows.HANDLE;
-pub const WNDPROC = fn (
+pub const HICON = windows.HANDLE;
+pub const HCURSOR = windows.HANDLE;
+pub const HBRUSH = windows.HANDLE;
+pub const ATOM = windows.WORD;
+pub const LRESULT = ?*windows.LONG;
+pub const WPARAM = ?*windows.UINT;
+pub const LPARAM = ?*windows.LONG;
+
+pub extern "user32" stdcallcc fn DefWindowProcA(
     windowHandle: HWND,
     message: windows.UINT,
-    wParam: *windows.UINT,
-    lParam: *windows.LONG,
+    wParam: WPARAM,
+    lParam: LPARAM,
+) LRESULT;
+
+pub const WNDPROC = extern fn (
+    windowHandle: HWND,
+    message: windows.UINT,
+    wParam: WPARAM,
+    lParam: LPARAM,
 ) ?*windows.LONG;
 
-pub const WNDCLASS = struct {
+pub const WNDCLASS = extern struct {
     style: windows.UINT = 0,
     windowProcedure: ?WNDPROC = undefined,
     extraClassBytes: windows.INT = 0,
     extraWindowBytes: windows.INT = 0,
     instance: ?HINSTANCE = undefined,
+    icon: ?HICON = null,
+    cursor: ?HCURSOR = null,
+    background: ?HBRUSH = null,
+    menuName: ?windows.LPCSTR = null,
+    className: windows.LPCSTR,
 };
 
-pub const ClassStyle = enum {
+pub extern "user32" stdcallcc fn RegisterClassA(windowClass: *WNDCLASS) ATOM;
+
+pub const ClassStyle = extern enum {
     VREDRAW = 0x0001,
     HREDRAW = 0x0002,
     BYTEALIGNCLIENT = 0x1000,

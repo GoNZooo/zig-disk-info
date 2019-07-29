@@ -1,6 +1,6 @@
 const std = @import("std");
 const disk = @import("disk.zig");
-const memory = std.mem;
+const mem = std.mem;
 const heap = std.heap;
 const warn = std.debug.warn;
 const win32 = @import("bindings/win32.zig");
@@ -18,18 +18,13 @@ const fmt = std.fmt;
 //     }
 // }
 
-export fn WindowProcedure(
+export fn windowProcedure(
     window: win32.HWND,
     message: windows.UINT,
-    wParam: *windows.UINT,
-    lParam: *windows.LONG,
-) ?*windows.LONG {
-    // WM_DESTROY
-    if (message == 2) {
-        return null;
-    } else {
-        return null;
-    }
+    wParam: win32.WPARAM,
+    lParam: win32.LPARAM,
+) win32.LRESULT {
+    return win32.DefWindowProcA(window, message, wParam, lParam);
 }
 
 export fn WinMain(
@@ -39,8 +34,6 @@ export fn WinMain(
     commandShow: windows.INT,
 ) windows.INT {
     const allocator = &heap.ArenaAllocator.init(heap.direct_allocator).allocator;
-    // _ = win32.MessageBoxA(null, c"hello", c"title", 0);
-    // warn("wut\n");
 
     // set up windowClass = WNDCLASS struct, set lpszClassName to a certain class name
     // also reference WindowProcedure in `lpfnWndProc` field
@@ -51,7 +44,13 @@ export fn WinMain(
     // windowClass.lpszClassName = "MyWindowClass";
     // windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
     // windowClass.hbrBackground = (HBRUSH) (COLOR_WINDOW + 1);
-    const windowClass = win32.WNDCLASS{ .instance = instance };
+    var windowClass = win32.WNDCLASS{
+        .instance = instance,
+        .className = c"disk-info",
+        .windowProcedure = windowProcedure,
+    };
+    _ = win32.RegisterClassA(&windowClass);
+
     const windowClassString = fmt.allocPrint(allocator, "{}\x00", windowClass) catch unreachable;
     const windowClassStringCLength = fmt.allocPrint(
         allocator,
@@ -60,8 +59,6 @@ export fn WinMain(
     ) catch unreachable;
     _ = win32.MessageBoxA(null, windowClassString.ptr, c"window class", 0);
     _ = win32.MessageBoxA(null, windowClassStringCLength.ptr, c"string length", 0);
-
-    // RegisterClass(&windowClass);
 
     // call RegisterClass(&windowClass)
     // const window = win32.CreateWindowExA(
