@@ -5,7 +5,7 @@ const ArenaAllocator = std.heap.ArenaAllocator;
 const assert = std.debug.assert;
 const warn = std.debug.warn;
 const expect = std.testing.expect;
-const win32 = @import("bindings/win32.zig");
+const win32 = @import("win32");
 
 pub const DriveType = enum {
     Unknown = 0,
@@ -17,7 +17,10 @@ pub const DriveType = enum {
     RAMdisk = 6,
 };
 
+pub const RootPathName = [4]u8;
+
 const FreeDiskSpaceData = struct {
+    root_name: RootPathName,
     sectors_per_cluster: u32,
     bytes_per_sector: u32,
     number_of_free_clusters: u32,
@@ -34,11 +37,35 @@ const FreeDiskSpaceData = struct {
     pub fn diskSpaceInBytes(self: FreeDiskSpaceData) u64 {
         return sectorSizeInBytes(self) * u64(self.total_number_of_clusters);
     }
+
+    pub fn freeDiskSpaceInKiloBytes(self: FreeDiskSpaceData) f32 {
+        return @intToFloat(f32, self.freeDiskSpaceInBytes()) / 1000.0;
+    }
+
+    pub fn diskSpaceInKiloBytes(self: FreeDiskSpaceData) f32 {
+        return @intToFloat(f32, self.diskSpaceInBytes()) / 1000.0;
+    }
+
+    pub fn freeDiskSpaceInMegaBytes(self: FreeDiskSpaceData) f32 {
+        return @intToFloat(f32, self.freeDiskSpaceInBytes()) / (1000.0 * 1000.0);
+    }
+
+    pub fn diskSpaceInMegaBytes(self: FreeDiskSpaceData) f32 {
+        return @intToFloat(f32, self.diskSpaceInBytes()) / (1000.0 * 1000.0);
+    }
+
+    pub fn freeDiskSpaceInGigaBytes(self: FreeDiskSpaceData) f32 {
+        return @intToFloat(f32, self.freeDiskSpaceInBytes()) / (1000.0 * 1000.0 * 1000.0);
+    }
+
+    pub fn diskSpaceInGigaBytes(self: FreeDiskSpaceData) f32 {
+        return @intToFloat(f32, self.diskSpaceInBytes()) / (1000.0 * 1000.0 * 1000.0);
+    }
 };
 
 pub const FreeDiskSpaceResult = union(enum) {
     FreeDiskSpace: FreeDiskSpaceData,
-    UnableToGetDiskInfo,
+    UnableToGetDiskInfo: RootPathName,
 };
 
 test "`getDriveType`" {
@@ -64,8 +91,8 @@ test "`enumerateDrives` with direct allocator" {
     expect(result.len != 0);
 }
 
-pub fn enumerateDrives(allocator: *memory.Allocator) error{OutOfMemory}![][4]u8 {
-    var logical_drives_mask = win32.GetLogicalDrives();
+pub fn enumerateDrives(allocator: *memory.Allocator) error{OutOfMemory}![]RootPathName {
+    var logical_drives_mask = win32.c.GetLogicalDrives();
     const logical_drive_bytes = try allocator.alloc(
         [4]u8,
         @popCount(@typeOf(logical_drives_mask), logical_drives_mask),
@@ -111,9 +138,9 @@ test "`getFreeDiskSpace`" {
 
 pub fn getFreeDiskSpace(
     allocator: *memory.Allocator,
-    root_path_names: [][4]u8,
+    root_path_names: []RootPathName,
 ) error{OutOfMemory}![]FreeDiskSpaceResult {
-    const allocated_memory = try allocator.alloc([4]u32, root_path_names.len);
+    const allocated_memory = try allocator.alloc([4]win32.c.ULONG, root_path_names.len);
     errdefer allocator.free(allocated_memory);
     const disk_data = try allocator.alloc(FreeDiskSpaceResult, root_path_names.len);
     errdefer allocator.free(disk_data);
@@ -123,7 +150,7 @@ pub fn getFreeDiskSpace(
         var bytes_per_sector = allocated_memory[i][1];
         var number_of_free_clusters = allocated_memory[i][2];
         var total_number_of_clusters = allocated_memory[i][3];
-        const result = win32.GetDiskFreeSpaceA(
+        const result = win32.c.GetDiskFreeSpaceA(
             &name,
             &sectors_per_cluster,
             &bytes_per_sector,
@@ -131,9 +158,10 @@ pub fn getFreeDiskSpace(
             &total_number_of_clusters,
         );
         switch (result) {
-            0 => disk_data[i] = .UnableToGetDiskInfo,
+            0 => disk_data[i] = FreeDiskSpaceResult{ .UnableToGetDiskInfo = name },
             else => disk_data[i] = FreeDiskSpaceResult{
                 .FreeDiskSpace = FreeDiskSpaceData{
+                    .root_name = name,
                     .sectors_per_cluster = sectors_per_cluster,
                     .bytes_per_sector = bytes_per_sector,
                     .number_of_free_clusters = number_of_free_clusters,
