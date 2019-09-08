@@ -300,11 +300,19 @@ pub export fn WinMain(
     // ) catch unreachable;
     // _ = win32.c.MessageBoxA(null, registration_string.ptr, c"registration", 0);
     const disk_info_allocator = &disk_info_arena_allocator.allocator;
-    var root_names = disk.enumerateDrives(disk_info_allocator) catch unreachable;
+    var root_names = disk.enumerateDrives(disk_info_allocator) catch |e| {
+        switch (e) {
+            error.OutOfMemory => @panic("Cannot allocate memory, OOM"),
+        }
+    };
     var free_disk_space_results = disk.getFreeDiskSpace(
         disk_info_allocator,
         root_names,
-    ) catch unreachable;
+    ) catch |e| {
+        switch (e) {
+            error.OutOfMemory => @panic("Cannot allocate memory, OOM"),
+        }
+    };
     application_state.disk_data = free_disk_space_results;
 
     const window = win32.c.CreateWindowExA(
