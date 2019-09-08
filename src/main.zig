@@ -7,14 +7,13 @@ const win32 = @import("win32");
 const windows = std.os.windows;
 const fmt = std.fmt;
 const utilities = @import("./utilities.zig");
+const xinput = @import("bindings/xinput.zig");
 
 const ApplicationState = struct {
     disk_data: ?[]disk.FreeDiskSpaceResult,
 };
 
 var application_state: ApplicationState = undefined;
-
-const xinput = @import("bindings/xinput.zig");
 
 const XInputGetStateProcType = extern fn (
     user_index: windows.DWORD,
@@ -34,28 +33,6 @@ export fn windowProcedure(
     const disk_info_allocator = &disk_info_arena_allocator.allocator;
     defer arena_allocator.deinit();
     const allocator = &arena_allocator.allocator;
-    // switch (message) {
-    //     win32.c.WM_DESTROY => {
-    //         win32.c.OutputDebugStringA(c"Window destroyed\n");
-    //         win32.c.PostQuitMessage(0);
-
-    //         return 0;
-    //     },
-    //     win32.c.WM_CREATE => {
-    //         win32.c.OutputDebugStringA(c"Window created\n");
-    //     },
-    //     else => {
-    //         const message_string = fmt.allocPrint(
-    //             allocator,
-    //             "unknown message, message: 0x{x} ({})\twParam: {}\tlParam: {}\n\x00",
-    //             message,
-    //             message,
-    //             wParam,
-    //             lParam,
-    //         ) catch unreachable;
-    //         win32.c.OutputDebugStringA(message_string.ptr);
-    //     },
-    // }
     switch (message) {
         win32.c.WM_DESTROY => {
             win32.c.OutputDebugStringA(c"Window destroyed\n");
@@ -65,12 +42,6 @@ export fn windowProcedure(
         },
         win32.c.WM_CREATE => {
             win32.c.OutputDebugStringA(c"Window created\n");
-            // const subsystem_string = fmt.allocPrint(
-            //     allocator,
-            //     "subsystem: {}\n\x00",
-            //     windows.subsystem,
-            // ) catch unreachable;
-            // _ = win32.c.MessageBoxA(null, subsystem_string.ptr, c"subsystem", 0);
         },
         win32.c.WM_PAINT => {
             win32.c.OutputDebugStringA(c"PAINT\n");
@@ -112,7 +83,6 @@ export fn windowProcedure(
                             };
                         },
                     };
-                    // _ = win32.c.MessageBoxA(null, result_string.ptr, c"result_string", 0);
                     var text_out_result = win32.c.TextOutA(
                         device_context,
                         current_x,
@@ -275,16 +245,6 @@ pub export fn WinMain(
     defer arena_allocator.deinit();
     const allocator = &arena_allocator.allocator;
 
-    // set up windowClass = WNDCLASS struct, set lpszClassName to a certain class name
-    // also reference WindowProcedure in `lpfnWndProc` field
-    // WNDCLASS windowClass = {};
-    // windowClass.style = CS_HREDRAW | CS_VREDRAW;
-    // windowClass.lpfnWndProc = WindowProcedure;
-    // windowClass.hInstance = instance;
-    // windowClass.lpszClassName = "MyWindowClass";
-    // windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-    // windowClass.hbrBackground = (HBRUSH) (COLOR_WINDOW + 1);
-    // @breakpoint();
     var window_class = utilities.zeroInit(win32.c.WNDCLASS);
     window_class.hInstance = instance;
     window_class.lpszClassName = c"disk-info";
@@ -293,12 +253,6 @@ pub export fn WinMain(
     window_class.hCursor = win32.c.LoadCursorA(null, win32.MAKEINTRESOURCEA(32512));
     window_class.hbrBackground = @intToPtr(win32.c.HBRUSH, 6);
     const registration = win32.c.RegisterClassA(&window_class);
-    // const registration_string = fmt.allocPrint(
-    //     allocator,
-    //     "registration: {}\n\x00",
-    //     registration,
-    // ) catch unreachable;
-    // _ = win32.c.MessageBoxA(null, registration_string.ptr, c"registration", 0);
     const disk_info_allocator = &disk_info_arena_allocator.allocator;
     var root_names = disk.enumerateDrives(disk_info_allocator) catch |e| {
         switch (e) {
@@ -329,29 +283,12 @@ pub export fn WinMain(
         instance,
         null,
     );
-    // const window_string = fmt.allocPrint(allocator, "{}\x00", window) catch unreachable;
-    // _ = win32.c.MessageBoxA(null, window_string.ptr, c"window", 0);
     const show_window = win32.c.ShowWindow(window, 1);
-    // const show_window_string = fmt.allocPrint(
-    //     allocator,
-    //     "show_window: {}\n\x00",
-    //     show_window,
-    // ) catch unreachable;
-    // _ = win32.c.MessageBoxA(null, show_window_string.ptr, c"show_window", 0);
-
     var msg = utilities.zeroInit(win32.c.MSG);
     var received_message = win32.c.GetMessageA(&msg, null, 0, 0);
     while (received_message != 0) : (received_message = win32.c.GetMessageA(&msg, null, 0, 0)) {
         const translated = win32.c.TranslateMessage(&msg);
         const dispatch_result = win32.c.DispatchMessageA(&msg);
-        // const message_string = fmt.allocPrint(
-        //     allocator,
-        //     "msg: {} | {} | {}\n\x00",
-        //     msg,
-        //     translated,
-        //     dispatch_result,
-        // ) catch unreachable;
-        // win32.c.OutputDebugStringA(message_string.ptr);
     }
 
     return 0;
