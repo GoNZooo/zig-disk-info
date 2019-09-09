@@ -104,37 +104,18 @@ export fn windowProcedure(
 
             return 0;
         },
-        win32.c.WM_KEYDOWN => {
-            const virtual_key_code = wParam;
-            switch (virtual_key_code) {
-                win32.c.VK_ESCAPE => {
-                    win32.c.PostQuitMessage(0);
-
-                    return 0;
-                },
-                else => {
-                    const keyup_string = fmt.allocPrint(
-                        allocator,
-                        "WM_KEYDOWN: {}\n\x00",
-                        virtual_key_code,
-                    ) catch |e| block: {
-                        break :block switch (e) {
-                            error.OutOfMemory => "OOM error\n\x00"[0..],
-                        };
-                    };
-                    win32.c.OutputDebugStringA(keyup_string.ptr);
-                },
-            }
-        },
         win32.c.WM_KEYUP => {
             const virtual_key_code = wParam;
+            const ALPHA_START = 0x30;
+            const ALPHA_END = 0x5A;
+
             switch (virtual_key_code) {
                 win32.c.VK_ESCAPE => {
                     win32.c.PostQuitMessage(0);
 
                     return 0;
                 },
-                0x30...0x5A => {
+                ALPHA_START...ALPHA_END => {
                     switch (virtual_key_code) {
                         'U' => {
                             if (application_state.disk_data) |data| {
@@ -154,7 +135,7 @@ export fn windowProcedure(
                                 }
                             };
                             application_state.disk_data = free_disk_space_results;
-                            var invalidate_result = win32.c.InvalidateRect(
+                            _ = win32.c.InvalidateRect(
                                 window,
                                 null,
                                 win32.c.TRUE,
@@ -167,69 +148,10 @@ export fn windowProcedure(
                         else => {},
                     }
                 },
-                else => {
-                    const keyup_string = fmt.allocPrint(
-                        allocator,
-                        "WM_KEYUP: {}\n\x00",
-                        virtual_key_code,
-                    ) catch unreachable;
-                    win32.c.OutputDebugStringA(keyup_string.ptr);
-                },
+                else => {},
             }
         },
-        win32.c.WM_CHAR => {
-            const virtual_key_code = wParam;
-            switch (virtual_key_code) {
-                win32.c.VK_ESCAPE => {
-                    win32.c.PostQuitMessage(0);
-
-                    return 0;
-                },
-                else => {
-                    const keyup_string = fmt.allocPrint(
-                        allocator,
-                        "WM_CHAR: {}\n\x00",
-                        virtual_key_code,
-                    ) catch unreachable;
-                    win32.c.OutputDebugStringA(keyup_string.ptr);
-                },
-            }
-        },
-        win32.c.WM_MOVE => {
-            win32.c.OutputDebugStringA(c"MOVE\n");
-        },
-        win32.c.WM_SIZE => {
-            win32.c.OutputDebugStringA(c"SIZE\n");
-        },
-        win32.c.WM_GETMINMAXINFO => {
-            win32.c.OutputDebugStringA(c"GETMINMAXINFO\n");
-        },
-        win32.c.WM_WINDOWPOSCHANGING => {
-            win32.c.OutputDebugStringA(c"WINDOWPOSCHANGING\n");
-        },
-        win32.c.WM_WINDOWPOSCHANGED => {
-            win32.c.OutputDebugStringA(c"WINDOWPOSCHANGED\n");
-        },
-        win32.c.WM_GETICON => {
-            win32.c.OutputDebugStringA(c"GETICON\n");
-        },
-        win32.c.WM_NCCREATE => {
-            win32.c.OutputDebugStringA(c"NCCREATE\n");
-        },
-        win32.c.WM_NCCALCSIZE => {
-            win32.c.OutputDebugStringA(c"NCCALCSIZE\n");
-        },
-        else => {
-            const message_string = fmt.allocPrint(
-                allocator,
-                "unknown message, message: 0x{x} ({})\twParam: {}\tlParam: {}\n\x00",
-                message,
-                message,
-                wParam,
-                lParam,
-            ) catch unreachable;
-            win32.c.OutputDebugStringA(message_string.ptr);
-        },
+        else => {},
     }
 
     return win32.c.DefWindowProcA(window, message, wParam, lParam);
