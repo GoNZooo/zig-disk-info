@@ -7,19 +7,12 @@ const win32 = @import("win32");
 const windows = std.os.windows;
 const fmt = std.fmt;
 const utilities = @import("./utilities.zig");
-const xinput = @import("bindings/xinput.zig");
 
 const ApplicationState = struct {
     disk_data: ?[]disk.FreeDiskSpaceResult,
 };
 
 var application_state: ApplicationState = undefined;
-
-const XInputGetStateProcType = extern fn (
-    user_index: windows.DWORD,
-    state: *xinput.XINPUT_STATE,
-) windows.DWORD;
-var XInputGetStateProc: ?XInputGetStateProcType = null;
 
 var disk_info_arena_allocator = heap.ArenaAllocator.init(heap.direct_allocator);
 
