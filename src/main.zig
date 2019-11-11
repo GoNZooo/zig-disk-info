@@ -57,10 +57,10 @@ export fn windowProcedure(
                     var result_string = switch (result) {
                         .FreeDiskSpace => |r| fmt.allocPrint(
                             allocator,
-                            "{}: {d:>9.3} GB / {d:>9.3} GB\x00",
+                            "{}: {d:>9.3} GiB / {d:>9.3} GiB\x00",
                             r.root_name,
-                            r.freeDiskSpaceInGigaBytes(),
-                            r.diskSpaceInGigaBytes(),
+                            r.freeDiskSpaceInGibiBytes(),
+                            r.diskSpaceInGibiBytes(),
                         ) catch |e| block: {
                             break :block switch (e) {
                                 error.OutOfMemory => "OOM error\n\x00"[0..],
