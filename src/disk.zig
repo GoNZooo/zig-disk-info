@@ -31,35 +31,59 @@ const FreeDiskSpaceData = struct {
     }
 
     pub fn freeDiskSpaceInBytes(self: FreeDiskSpaceData) u64 {
-        return sectorSizeInBytes(self) * u64(self.number_of_free_clusters);
+        return sectorSizeInBytes(self) * @as(u64, self.number_of_free_clusters);
     }
 
     pub fn diskSpaceInBytes(self: FreeDiskSpaceData) u64 {
-        return sectorSizeInBytes(self) * u64(self.total_number_of_clusters);
+        return sectorSizeInBytes(self) * @as(u64, self.total_number_of_clusters);
     }
 
-    pub fn freeDiskSpaceInKiloBytes(self: FreeDiskSpaceData) f32 {
-        return @intToFloat(f32, self.freeDiskSpaceInBytes()) / 1000.0;
+    pub fn freeDiskSpaceInKiloBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.freeDiskSpaceInBytes()) / 1000.0;
     }
 
-    pub fn diskSpaceInKiloBytes(self: FreeDiskSpaceData) f32 {
-        return @intToFloat(f32, self.diskSpaceInBytes()) / 1000.0;
+    pub fn diskSpaceInKiloBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.diskSpaceInBytes()) / 1000.0;
     }
 
-    pub fn freeDiskSpaceInMegaBytes(self: FreeDiskSpaceData) f32 {
-        return @intToFloat(f32, self.freeDiskSpaceInBytes()) / (1000.0 * 1000.0);
+    pub fn freeDiskSpaceInMegaBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.freeDiskSpaceInBytes()) / (1000.0 * 1000.0);
     }
 
-    pub fn diskSpaceInMegaBytes(self: FreeDiskSpaceData) f32 {
-        return @intToFloat(f32, self.diskSpaceInBytes()) / (1000.0 * 1000.0);
+    pub fn diskSpaceInMegaBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.diskSpaceInBytes()) / (1000.0 * 1000.0);
     }
 
-    pub fn freeDiskSpaceInGigaBytes(self: FreeDiskSpaceData) f32 {
-        return @intToFloat(f32, self.freeDiskSpaceInBytes()) / (1000.0 * 1000.0 * 1000.0);
+    pub fn freeDiskSpaceInGigaBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.freeDiskSpaceInBytes()) / (1000.0 * 1000.0 * 1000.0);
     }
 
-    pub fn diskSpaceInGigaBytes(self: FreeDiskSpaceData) f32 {
-        return @intToFloat(f32, self.diskSpaceInBytes()) / (1000.0 * 1000.0 * 1000.0);
+    pub fn diskSpaceInGigaBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.diskSpaceInBytes()) / (1000.0 * 1000.0 * 1000.0);
+    }
+
+    pub fn freeDiskSpaceInKibiBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.freeDiskSpaceInBytes()) / 1024.0;
+    }
+
+    pub fn diskSpaceInKibiBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.diskSpaceInBytes()) / 1024.0;
+    }
+
+    pub fn freeDiskSpaceInMebiBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.freeDiskSpaceInBytes()) / (1024.0 * 1024.0);
+    }
+
+    pub fn diskSpaceInMebiBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.diskSpaceInBytes()) / (1024.0 * 1024.0);
+    }
+
+    pub fn freeDiskSpaceInGibiBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.freeDiskSpaceInBytes()) / (1024.0 * 1024.0 * 1024.0);
+    }
+
+    pub fn diskSpaceInGibiBytes(self: FreeDiskSpaceData) f64 {
+        return @intToFloat(f64, self.diskSpaceInBytes()) / (1024.0 * 1024.0 * 1024.0);
     }
 };
 
@@ -75,7 +99,7 @@ test "`getDriveType`" {
 }
 
 pub fn getDriveType(root_path_name: [*]const u8) DriveType {
-    return @intToEnum(DriveType, @intCast(u3, win32.GetDriveTypeA(root_path_name)));
+    return @intToEnum(DriveType, @intCast(u3, win32.c.GetDriveTypeA(root_path_name)));
 }
 
 test "`enumerateDrives`" {
@@ -136,6 +160,74 @@ test "`getFreeDiskSpace`" {
     expect(free_disk_space_entries.len != 0);
 }
 
+test "calculations for free disk space in 'bytes' make sense" {
+    const allocator = std.heap.direct_allocator;
+    const result = try enumerateDrives(allocator);
+    const free_disk_space_entries = try getFreeDiskSpace(allocator, result);
+    expect(free_disk_space_entries.len != 0);
+    for (free_disk_space_entries) |free_disk_space_entry| {
+        switch (free_disk_space_entry) {
+            .FreeDiskSpace => |free_disk_space| {
+                const free_space_bytes = free_disk_space.freeDiskSpaceInBytes();
+                const free_space_kilobytes = free_disk_space.freeDiskSpaceInKiloBytes();
+                const free_space_megabytes = free_disk_space.freeDiskSpaceInMegaBytes();
+                const free_space_gigabytes = free_disk_space.freeDiskSpaceInGigaBytes();
+
+                expectApproximatelyEqual(
+                    0.1,
+                    free_space_kilobytes,
+                    @intToFloat(f64, free_space_bytes) / 1000.0,
+                );
+                expectApproximatelyEqual(0.1, free_space_megabytes, free_space_kilobytes / 1000.0);
+                expectApproximatelyEqual(0.1, free_space_gigabytes, free_space_megabytes / 1000.0);
+            },
+            .UnableToGetDiskInfo => unreachable,
+        }
+    }
+}
+
+test "calculations for free disk space in '{ki,me,gi}bibytes' make sense" {
+    const allocator = std.heap.direct_allocator;
+    const result = try enumerateDrives(allocator);
+    const free_disk_space_entries = try getFreeDiskSpace(allocator, result);
+    expect(free_disk_space_entries.len != 0);
+    const free_data = FreeDiskSpaceData{
+        .root_name = "C:\\\\",
+        .sectors_per_cluster = 1,
+        .bytes_per_sector = 1000,
+        .number_of_free_clusters = 1,
+        .total_number_of_clusters = 1,
+    };
+
+    const free_bytes = free_data.freeDiskSpaceInBytes();
+    const free_kibibytes = free_data.freeDiskSpaceInKibiBytes();
+    const free_mebibytes = free_data.freeDiskSpaceInMebiBytes();
+    const free_gibibytes = free_data.freeDiskSpaceInGibiBytes();
+    expectApproximatelyEqual(0.1, free_kibibytes, @intToFloat(f64, free_bytes) / 1024.0);
+    expectApproximatelyEqual(0.1, free_mebibytes, free_kibibytes / 1024.0);
+    expectApproximatelyEqual(0.1, free_gibibytes, free_mebibytes / 1024.0);
+
+    for (free_disk_space_entries) |free_disk_space_entry| {
+        switch (free_disk_space_entry) {
+            .FreeDiskSpace => |free_disk_space| {
+                const free_space_bytes = free_disk_space.freeDiskSpaceInBytes();
+                const free_space_kibibytes = free_disk_space.freeDiskSpaceInKibiBytes();
+                const free_space_mebibytes = free_disk_space.freeDiskSpaceInMebiBytes();
+                const free_space_gibibytes = free_disk_space.freeDiskSpaceInGibiBytes();
+
+                expectApproximatelyEqual(
+                    0.1,
+                    free_space_kibibytes,
+                    @intToFloat(f64, free_space_bytes) / 1024.0,
+                );
+                expectApproximatelyEqual(0.1, free_space_mebibytes, free_space_kibibytes / 1024.0);
+                expectApproximatelyEqual(0.1, free_space_gibibytes, free_space_mebibytes / 1024.0);
+            },
+            .UnableToGetDiskInfo => unreachable,
+        }
+    }
+}
+
 pub fn getFreeDiskSpace(
     allocator: *memory.Allocator,
     root_path_names: []RootPathName,
@@ -172,4 +264,9 @@ pub fn getFreeDiskSpace(
     }
 
     return disk_data;
+}
+
+fn expectApproximatelyEqual(tolerance: f64, a: f64, b: f64) void {
+    const diff = @fabs(f64, a - b);
+    expect(diff < tolerance);
 }
