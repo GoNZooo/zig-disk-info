@@ -119,7 +119,7 @@ pub fn enumerateDrives(allocator: *memory.Allocator) error{OutOfMemory}![]RootPa
     var logical_drives_mask = win32.c.GetLogicalDrives();
     const logical_drive_bytes = try allocator.alloc(
         [4]u8,
-        @popCount(@typeOf(logical_drives_mask), logical_drives_mask),
+        @popCount(@TypeOf(logical_drives_mask), logical_drives_mask),
     );
     errdefer allocator.free(logical_drive_bytes);
     var letter: u8 = 'A';

@@ -28,16 +28,16 @@ export fn windowProcedure(
     const allocator = &arena_allocator.allocator;
     switch (message) {
         win32.c.WM_DESTROY => {
-            win32.c.OutputDebugStringA(c"Window destroyed\n");
+            win32.c.OutputDebugStringA("Window destroyed\n");
             win32.c.PostQuitMessage(0);
 
             return 0;
         },
         win32.c.WM_CREATE => {
-            win32.c.OutputDebugStringA(c"Window created\n");
+            win32.c.OutputDebugStringA("Window created\n");
         },
         win32.c.WM_PAINT => {
-            win32.c.OutputDebugStringA(c"PAINT\n");
+            win32.c.OutputDebugStringA("PAINT\n");
             var paint_struct = utilities.zeroInit(win32.c.PAINTSTRUCT);
             var device_context = win32.c.BeginPaint(window, &paint_struct);
 
@@ -58,9 +58,11 @@ export fn windowProcedure(
                         .FreeDiskSpace => |r| fmt.allocPrint(
                             allocator,
                             "{}: {d:>9.3} GiB / {d:>9.3} GiB\x00",
-                            r.root_name,
-                            r.freeDiskSpaceInGibiBytes(),
-                            r.diskSpaceInGibiBytes(),
+                            .{
+                                r.root_name,
+                                r.freeDiskSpaceInGibiBytes(),
+                                r.diskSpaceInGibiBytes(),
+                            },
                         ) catch |e| block: {
                             break :block switch (e) {
                                 error.OutOfMemory => "OOM error\n\x00"[0..],
@@ -69,7 +71,7 @@ export fn windowProcedure(
                         .UnableToGetDiskInfo => |root_name| fmt.allocPrint(
                             allocator,
                             "UnableToGetDiskInfo: {}\x00",
-                            root_name,
+                            .{root_name},
                         ) catch |e| block: {
                             break :block switch (e) {
                                 error.OutOfMemory => "OOM error\n\x00"[0..],
@@ -162,11 +164,11 @@ pub export fn WinMain(
 
     var window_class = utilities.zeroInit(win32.c.WNDCLASS);
     window_class.hInstance = instance;
-    window_class.lpszClassName = c"disk-info";
+    window_class.lpszClassName = "disk-info";
     window_class.lpfnWndProc = windowProcedure;
     window_class.style = win32.c.CS_HREDRAW | win32.c.CS_VREDRAW;
     window_class.hCursor = win32.c.LoadCursorA(null, win32.MAKEINTRESOURCEA(32512));
-    window_class.hbrBackground = @intToPtr(win32.c.HBRUSH, 6);
+    window_class.hbrBackground = @intToPtr(win32.c.HBRUSH, 0);
     const registration = win32.c.RegisterClassA(&window_class);
     const disk_info_allocator = &disk_info_arena_allocator.allocator;
     var root_names = disk.enumerateDrives(disk_info_allocator) catch |e| {
@@ -186,8 +188,8 @@ pub export fn WinMain(
 
     const window = win32.c.CreateWindowExA(
         0,
-        c"disk-info",
-        c"disk-info",
+        "disk-info",
+        "disk-info",
         win32.c.WS_OVERLAPPEDWINDOW,
         30,
         30,
