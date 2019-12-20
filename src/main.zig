@@ -14,7 +14,7 @@ const ApplicationState = struct {
 
 var application_state: ApplicationState = undefined;
 
-var disk_info_arena_allocator = heap.ArenaAllocator.init(heap.direct_allocator);
+var disk_info_arena_allocator = heap.ArenaAllocator.init(heap.page_allocator);
 
 export fn windowProcedure(
     window: win32.c.HWND,
@@ -22,7 +22,9 @@ export fn windowProcedure(
     wParam: win32.c.WPARAM,
     lParam: win32.c.LPARAM,
 ) win32.c.LRESULT {
-    var arena_allocator = heap.ArenaAllocator.init(heap.direct_allocator);
+    const WHITE_BRUSH = @intCast(c_int, @ptrToInt(win32.c.GetStockObject(win32.c.WHITE_BRUSH)));
+
+    var arena_allocator = heap.ArenaAllocator.init(heap.page_allocator);
     const disk_info_allocator = &disk_info_arena_allocator.allocator;
     defer arena_allocator.deinit();
     const allocator = &arena_allocator.allocator;
@@ -43,10 +45,9 @@ export fn windowProcedure(
 
             var client_rect = utilities.zeroInit(win32.c.RECT);
             _ = win32.c.GetClientRect(window, &client_rect);
-            _ = win32.c.SetBkMode(
-                device_context,
-                @intCast(c_int, @ptrToInt(win32.c.GetStockObject(win32.c.WHITE_BRUSH))),
-            );
+            var rect_string = fmt.allocPrint(allocator, "{}\x00", .{client_rect}) catch unreachable;
+            _ = win32.c.OutputDebugStringA(rect_string.ptr);
+            _ = win32.c.SetBkMode(device_context, WHITE_BRUSH);
 
             var black_pen = @intCast(c_ulong, @ptrToInt(win32.c.GetStockObject(win32.c.BLACK_PEN)));
             _ = win32.c.SetDCPenColor(device_context, black_pen);
@@ -130,11 +131,16 @@ export fn windowProcedure(
                                 }
                             };
                             application_state.disk_data = free_disk_space_results;
-                            _ = win32.c.InvalidateRect(
-                                window,
+                            var invalidate_result = win32.c.InvalidateRect(
                                 null,
-                                win32.c.TRUE,
+                                null,
+                                win32.c.FALSE,
                             );
+
+                            if (invalidate_result != 0) {
+                                // @breakpoint();
+                                win32.c.OutputDebugStringA("Invalidated rect\n");
+                            }
                         },
                         'I' => {
                             var app_state_copy = application_state;
@@ -145,6 +151,8 @@ export fn windowProcedure(
                 },
                 else => {},
             }
+
+            return 0;
         },
         else => {},
     }
@@ -158,6 +166,8 @@ pub export fn WinMain(
     commandLine: windows.LPSTR,
     commandShow: windows.INT,
 ) windows.INT {
+    const WHITE_BRUSH = @intCast(c_int, @ptrToInt(win32.c.GetStockObject(win32.c.WHITE_BRUSH)));
+
     var arena_allocator = heap.ArenaAllocator.init(heap.direct_allocator);
     defer arena_allocator.deinit();
     const allocator = &arena_allocator.allocator;
@@ -168,8 +178,7 @@ pub export fn WinMain(
     window_class.lpfnWndProc = windowProcedure;
     window_class.style = win32.c.CS_HREDRAW | win32.c.CS_VREDRAW;
     window_class.hCursor = win32.c.LoadCursorA(null, win32.MAKEINTRESOURCEA(32512));
-    window_class.hbrBackground = @intToPtr(win32.c.HBRUSH, 0);
-    const registration = win32.c.RegisterClassA(&window_class);
+    window_class.hbrBackground = WHITE_BRUSH;
     const disk_info_allocator = &disk_info_arena_allocator.allocator;
     var root_names = disk.enumerateDrives(disk_info_allocator) catch |e| {
         switch (e) {
