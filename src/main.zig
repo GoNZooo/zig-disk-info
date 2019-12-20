@@ -22,8 +22,6 @@ export fn windowProcedure(
     wParam: win32.c.WPARAM,
     lParam: win32.c.LPARAM,
 ) win32.c.LRESULT {
-    const WHITE_BRUSH = @intCast(c_int, @ptrToInt(win32.c.GetStockObject(win32.c.WHITE_BRUSH)));
-
     var arena_allocator = heap.ArenaAllocator.init(heap.page_allocator);
     const disk_info_allocator = &disk_info_arena_allocator.allocator;
     defer arena_allocator.deinit();
@@ -47,7 +45,7 @@ export fn windowProcedure(
             _ = win32.c.GetClientRect(window, &client_rect);
             var rect_string = fmt.allocPrint(allocator, "{}\x00", .{client_rect}) catch unreachable;
             _ = win32.c.OutputDebugStringA(rect_string.ptr);
-            _ = win32.c.SetBkMode(device_context, WHITE_BRUSH);
+            _ = win32.c.SetBkMode(device_context, win32.c.OPAQUE);
 
             var black_pen = @intCast(c_ulong, @ptrToInt(win32.c.GetStockObject(win32.c.BLACK_PEN)));
             _ = win32.c.SetDCPenColor(device_context, black_pen);
@@ -166,7 +164,9 @@ pub export fn WinMain(
     commandLine: windows.LPSTR,
     commandShow: windows.INT,
 ) windows.INT {
-    const WHITE_BRUSH = @intCast(c_int, @ptrToInt(win32.c.GetStockObject(win32.c.WHITE_BRUSH)));
+    const WHITE_BRUSH = @ptrCast(win32.c.HBRUSH, @alignCast(8, win32.c.GetStockObject(
+        win32.c.WHITE_BRUSH,
+    )));
 
     var arena_allocator = heap.ArenaAllocator.init(heap.direct_allocator);
     defer arena_allocator.deinit();
@@ -179,6 +179,7 @@ pub export fn WinMain(
     window_class.style = win32.c.CS_HREDRAW | win32.c.CS_VREDRAW;
     window_class.hCursor = win32.c.LoadCursorA(null, win32.MAKEINTRESOURCEA(32512));
     window_class.hbrBackground = WHITE_BRUSH;
+    const registration = win32.c.RegisterClassA(&window_class);
     const disk_info_allocator = &disk_info_arena_allocator.allocator;
     var root_names = disk.enumerateDrives(disk_info_allocator) catch |e| {
         switch (e) {
