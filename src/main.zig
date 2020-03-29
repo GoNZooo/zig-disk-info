@@ -39,21 +39,21 @@ export fn windowProcedure(
         win32.c.WM_PAINT => {
             win32.c.OutputDebugStringA("PAINT\n");
             var paint_struct = utilities.zeroInit(win32.c.PAINTSTRUCT);
-            var device_context = win32.c.BeginPaint(window, &paint_struct);
+            const device_context = win32.c.BeginPaint(window, &paint_struct);
 
             var client_rect = utilities.zeroInit(win32.c.RECT);
             _ = win32.c.GetClientRect(window, &client_rect);
-            var rect_string = fmt.allocPrint(allocator, "{}\x00", .{client_rect}) catch unreachable;
+            const rect_string = fmt.allocPrint(allocator, "{}\x00", .{client_rect}) catch unreachable;
             _ = win32.c.OutputDebugStringA(rect_string.ptr);
             _ = win32.c.SetBkMode(device_context, win32.c.OPAQUE);
 
-            var black_pen = @intCast(c_ulong, @ptrToInt(win32.c.GetStockObject(win32.c.BLACK_PEN)));
+            const black_pen = @intCast(c_ulong, @ptrToInt(win32.c.GetStockObject(win32.c.BLACK_PEN)));
             _ = win32.c.SetDCPenColor(device_context, black_pen);
             if (application_state.disk_data) |data| {
                 const current_x: c_int = 5;
                 var current_y: c_int = 2;
                 for (data) |result| {
-                    var result_string = switch (result) {
+                    const result_string = switch (result) {
                         .FreeDiskSpace => |r| fmt.allocPrint(
                             allocator,
                             "{}: {d:>9.3} GiB / {d:>9.3} GiB\x00",
@@ -64,7 +64,7 @@ export fn windowProcedure(
                             },
                         ) catch |e| block: {
                             break :block switch (e) {
-                                error.OutOfMemory => "OOM error\n\x00"[0..],
+                                error.OutOfMemory => @panic("OOM"),
                             };
                         },
                         .UnableToGetDiskInfo => |root_name| fmt.allocPrint(
@@ -73,11 +73,11 @@ export fn windowProcedure(
                             .{root_name},
                         ) catch |e| block: {
                             break :block switch (e) {
-                                error.OutOfMemory => "OOM error\n\x00"[0..],
+                                error.OutOfMemory => @panic("OOM"),
                             };
                         },
                     };
-                    var text_out_result = win32.c.TextOutA(
+                    const text_out_result = win32.c.TextOutA(
                         device_context,
                         current_x,
                         current_y,
@@ -115,12 +115,12 @@ export fn windowProcedure(
                             if (application_state.disk_data) |data| {
                                 disk_info_allocator.free(data);
                             }
-                            var root_names = disk.enumerateDrives(disk_info_allocator) catch |e| {
+                            const root_names = disk.enumerateDrives(disk_info_allocator) catch |e| {
                                 switch (e) {
                                     error.OutOfMemory => @panic("Cannot get disk drives, OOM"),
                                 }
                             };
-                            var free_disk_space_results = disk.getFreeDiskSpace(
+                            const free_disk_space_results = disk.getFreeDiskSpace(
                                 disk_info_allocator,
                                 root_names,
                             ) catch |e| {
@@ -129,7 +129,7 @@ export fn windowProcedure(
                                 }
                             };
                             application_state.disk_data = free_disk_space_results;
-                            var invalidate_result = win32.c.InvalidateRect(
+                            const invalidate_result = win32.c.InvalidateRect(
                                 null,
                                 null,
                                 win32.c.FALSE,
@@ -141,7 +141,7 @@ export fn windowProcedure(
                             }
                         },
                         'I' => {
-                            var app_state_copy = application_state;
+                            const app_state_copy = application_state;
                             @breakpoint();
                         },
                         else => {},
@@ -181,12 +181,12 @@ pub export fn WinMain(
     window_class.hbrBackground = WHITE_BRUSH;
     const registration = win32.c.RegisterClassA(&window_class);
     const disk_info_allocator = &disk_info_arena_allocator.allocator;
-    var root_names = disk.enumerateDrives(disk_info_allocator) catch |e| {
+    const root_names = disk.enumerateDrives(disk_info_allocator) catch |e| {
         switch (e) {
             error.OutOfMemory => @panic("Cannot allocate memory, OOM"),
         }
     };
-    var free_disk_space_results = disk.getFreeDiskSpace(
+    const free_disk_space_results = disk.getFreeDiskSpace(
         disk_info_allocator,
         root_names,
     ) catch |e| {
