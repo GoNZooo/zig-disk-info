@@ -69,7 +69,7 @@ export fn windowProcedure(
                         },
                         .UnableToGetDiskInfo => |root_name| fmt.allocPrint(
                             allocator,
-                            "UnableToGetDiskInfo: {}\x00",
+                            "{}: Unable to get disk info\x00",
                             .{root_name},
                         ) catch |e| block: {
                             break :block switch (e) {
