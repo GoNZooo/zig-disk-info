@@ -129,6 +129,12 @@ export fn windowProcedure(
                                 }
                             };
                             application_state.disk_data = free_disk_space_results;
+                            const state_string = fmt.allocPrint(
+                                allocator,
+                                "state: {}\x00",
+                                .{application_state},
+                            ) catch unreachable;
+                            _ = win32.c.OutputDebugStringA(state_string.ptr);
                             const invalidate_result = win32.c.InvalidateRect(
                                 null,
                                 null,
