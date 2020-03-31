@@ -10,6 +10,8 @@ const utilities = @import("./utilities.zig");
 
 const ApplicationState = struct {
     disk_data: ?[]disk.FreeDiskSpaceResult,
+    mouse_x: u32,
+    mouse_y: u32,
 };
 
 var application_state: ApplicationState = undefined;
@@ -35,6 +37,16 @@ export fn windowProcedure(
         },
         win32.c.WM_CREATE => {
             win32.c.OutputDebugStringA("Window created\n");
+        },
+        win32.c.WM_MOUSEMOVE => {
+            var point: win32.c.POINT = undefined;
+            switch (win32.c.GetCursorPos(&point)) {
+                0 => {},
+                else => {
+                    application_state.mouse_x = @intCast(u32, point.x);
+                    application_state.mouse_y = @intCast(u32, point.y);
+                },
+            }
         },
         win32.c.WM_PAINT => {
             win32.c.OutputDebugStringA("PAINT\n");
