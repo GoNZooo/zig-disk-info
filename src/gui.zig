@@ -2,13 +2,11 @@ const std = @import("std");
 const mem = std.mem;
 const testing = std.testing;
 
-pub fn State(comptime suppliedRenderers: []Renderer) type {
-    return struct {
-        renderers: []const Renderer = suppliedRenderers,
-        hot: ?Id = null,
-        active: ?Id = null,
-    };
-}
+const State = struct {
+    renderers: []const Renderer,
+    hot: ?Id = null,
+    active: ?Id = null,
+};
 
 pub fn makeId(primary: PrimaryId, secondary: SecondaryId) Id {
     return Id{ .primary = primary, .secondary = secondary };
@@ -66,14 +64,7 @@ fn idsEqual(a: ?Id, b: ?Id) bool {
     return a.?.isEqual(b.?);
 }
 
-pub fn button(
-    comptime renderers: []Renderer,
-    ui: *State(renderers),
-    id: Id,
-    rect: Rect,
-    text: []const u8,
-    mouse: Mouse,
-) bool {
+pub fn button(ui: *State, id: Id, rect: Rect, text: []const u8, mouse: Mouse) bool {
     var result = false;
     for (ui.renderers) |r| {
         r.button(rect, text);
@@ -105,10 +96,9 @@ fn nullButton(rect: Rect, text: []const u8) void {
 
 test "button is hot when mouse is inside its rect" {
     const renderers = &[_]Renderer{nullRenderer};
-    var state = State(renderers){};
+    var state = State{ .renderers = renderers };
     const button_id = makeId("testButton", 0);
     var button_clicked = button(
-        renderers,
         &state,
         button_id,
         Rect{ .x = 4, .y = 5, .w = 50, .h = 50 },
