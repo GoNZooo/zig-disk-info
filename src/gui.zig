@@ -103,7 +103,7 @@ fn nullButton(rect: Rect, text: []const u8) void {
     return;
 }
 
-test "button is hot when inside it" {
+test "button is hot when mouse is inside its rect" {
     const renderers = &[_]Renderer{nullRenderer};
     var state = State(renderers){};
     const button_id = makeId("testButton", 0);
@@ -111,9 +111,9 @@ test "button is hot when inside it" {
         renderers,
         &state,
         button_id,
-        Rect{ .x = 0, .y = 0, .w = 50, .h = 50 },
+        Rect{ .x = 4, .y = 5, .w = 50, .h = 50 },
         "Test",
-        Mouse{ .x = 49, .y = 1 },
+        Mouse{ .x = 53, .y = 6 },
     );
 
     testing.expectEqual(button_clicked, false);
