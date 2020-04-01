@@ -97,12 +97,14 @@ pub fn button(
     return result;
 }
 
-fn drawNothingButton(rect: Rect, text: []const u8) void {
+const nullRenderer = Renderer{ .button = nullButton };
+
+fn nullButton(rect: Rect, text: []const u8) void {
     return;
 }
 
 test "button is hot when inside it" {
-    const renderers = &[_]Renderer{.{ .button = drawNothingButton }};
+    const renderers = &[_]Renderer{nullRenderer};
     var state = State(renderers){};
     const button_id = makeId("testButton", 0);
     var button_clicked = button(
