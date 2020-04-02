@@ -138,32 +138,11 @@ pub fn enumerateDrives(allocator: *memory.Allocator) error{OutOfMemory}![]RootPa
     return logical_drive_bytes;
 }
 
-test "`getFreeDiskSpaceForRootPath`" {
-    const allocator = std.heap.direct_allocator;
-    const result = try enumerateDrives(allocator);
-    const free_disk_space_entry = try getFreeDiskSpaceForRootPath(allocator, result[0]);
-    expect(true);
-}
-
-pub fn getFreeDiskSpaceForRootPath(
-    allocator: *memory.Allocator,
-    root_path_name: [4]u8,
-) error{OutOfMemory}!FreeDiskSpaceResult {
-    const result = try getFreeDiskSpace(allocator, ([_][4]u8{root_path_name})[0..]);
-    return result[0];
-}
-
-test "`getFreeDiskSpace`" {
-    const allocator = std.heap.direct_allocator;
-    const result = try enumerateDrives(allocator);
-    const free_disk_space_entries = try getFreeDiskSpace(allocator, result);
-    expect(free_disk_space_entries.len != 0);
-}
-
 test "calculations for free disk space in 'bytes' make sense" {
     const allocator = std.heap.direct_allocator;
     const result = try enumerateDrives(allocator);
     const free_disk_space_entries = try getFreeDiskSpace(allocator, result);
+    var at_least_one_ok = false;
     expect(free_disk_space_entries.len != 0);
     for (free_disk_space_entries) |free_disk_space_entry| {
         switch (free_disk_space_entry) {
@@ -180,10 +159,12 @@ test "calculations for free disk space in 'bytes' make sense" {
                 );
                 expectApproximatelyEqual(0.1, free_space_megabytes, free_space_kilobytes / 1000.0);
                 expectApproximatelyEqual(0.1, free_space_gigabytes, free_space_megabytes / 1000.0);
+                at_least_one_ok = true;
             },
-            .UnableToGetDiskInfo => unreachable,
+            .UnableToGetDiskInfo => {},
         }
     }
+    expect(at_least_one_ok);
 }
 
 test "calculations for free disk space in '{ki,me,gi}bibytes' make sense" {
@@ -191,8 +172,9 @@ test "calculations for free disk space in '{ki,me,gi}bibytes' make sense" {
     const result = try enumerateDrives(allocator);
     const free_disk_space_entries = try getFreeDiskSpace(allocator, result);
     expect(free_disk_space_entries.len != 0);
+    var at_least_one_ok = false;
     const free_data = FreeDiskSpaceData{
-        .root_name = "C:\\\\",
+        .root_name = [4]u8{ 'C', ':', '\\', '\\' },
         .sectors_per_cluster = 1,
         .bytes_per_sector = 1000,
         .number_of_free_clusters = 1,
@@ -222,10 +204,12 @@ test "calculations for free disk space in '{ki,me,gi}bibytes' make sense" {
                 );
                 expectApproximatelyEqual(0.1, free_space_mebibytes, free_space_kibibytes / 1024.0);
                 expectApproximatelyEqual(0.1, free_space_gibibytes, free_space_mebibytes / 1024.0);
+                at_least_one_ok = true;
             },
-            .UnableToGetDiskInfo => unreachable,
+            .UnableToGetDiskInfo => {},
         }
     }
+    expect(at_least_one_ok);
 }
 
 pub fn getFreeDiskSpace(
@@ -267,6 +251,6 @@ pub fn getFreeDiskSpace(
 }
 
 fn expectApproximatelyEqual(tolerance: f64, a: f64, b: f64) void {
-    const diff = @fabs(f64, a - b);
+    const diff = @fabs(a - b);
     expect(diff < tolerance);
 }
