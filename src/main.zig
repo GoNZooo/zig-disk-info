@@ -170,6 +170,46 @@ export fn windowProcedure(
 
             return 0;
         },
+        win32.c.WM_LBUTTONUP => {
+            const x = lParam & 0xffff;
+            const y = (lParam & 0xffff0000) >> 16;
+            const current_x: c_int = 5;
+            var current_y: c_int = 2;
+            const height = 20;
+            if (application_state.disk_data) |data| {
+                for (data) |result| {
+                    if (y > current_y and y < (current_y + height)) {
+                        const output_string = switch (result) {
+                            .FreeDiskSpace => |r| fmt.allocPrint(
+                                allocator,
+                                "click: {}\n\x00",
+                                .{r.root_name},
+                            ) catch unreachable,
+                            .UnableToGetDiskInfo => fmt.allocPrint(
+                                allocator,
+                                "N/A\n\x00",
+                                .{},
+                            ) catch unreachable,
+                        };
+                        win32.c.OutputDebugStringA(output_string.ptr);
+                        switch (result) {
+                            .FreeDiskSpace => |r| {
+                                _ = win32.c.ShellExecute(
+                                    null,
+                                    "open",
+                                    r.root_name[0..],
+                                    null,
+                                    null,
+                                    win32.c.SW_SHOWDEFAULT,
+                                );
+                            },
+                            .UnableToGetDiskInfo => {},
+                        }
+                    }
+                    current_y += height;
+                }
+            }
+        },
         else => {},
     }
 
