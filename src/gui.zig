@@ -4,6 +4,7 @@ const testing = std.testing;
 
 pub const State = struct {
     renderers: []const Renderer,
+    mouse: Mouse,
     hot: ?Id = null,
     active: ?Id = null,
 };
@@ -64,24 +65,24 @@ pub fn idsEqual(a: ?Id, b: ?Id) bool {
     return a.?.isEqual(b.?);
 }
 
-pub fn button(ui: *State, id: Id, rect: Rect, text: []const u8, mouse: Mouse) bool {
+pub fn button(ui: *State, id: Id, rect: Rect, text: []const u8) bool {
     var result = false;
     for (ui.renderers) |r| {
         r.button(rect, text);
     }
 
     if (idsEqual(ui.active, id)) {
-        if (mouse.left_up) {
-            if (idsEqual(ui.hot, id) and mouse.isInRect(rect)) {
+        if (ui.mouse.left_up) {
+            if (idsEqual(ui.hot, id) and ui.mouse.isInRect(rect)) {
                 result = true;
             }
             ui.active = null;
         }
     } else if (idsEqual(ui.hot, id)) {
-        if (mouse.left_down and mouse.isInRect(rect)) ui.active = id;
+        if (ui.mouse.left_down and ui.mouse.isInRect(rect)) ui.active = id;
     }
 
-    if (mouse.isInRect(rect)) {
+    if (ui.mouse.isInRect(rect)) {
         ui.hot = id;
     }
 
@@ -96,14 +97,16 @@ pub fn nullButton(rect: Rect, text: []const u8) void {
 
 test "button is hot when mouse is inside its rect" {
     const renderers = &[_]Renderer{nullRenderer};
-    var state = State{ .renderers = renderers };
+    var state = State{
+        .renderers = renderers,
+        .mouse = Mouse{ .x = 53, .y = 6 },
+    };
     const button_id = makeId("testButton", 0);
     var button_clicked = button(
         &state,
         button_id,
         Rect{ .x = 4, .y = 5, .w = 50, .h = 50 },
         "Test",
-        Mouse{ .x = 53, .y = 6 },
     );
 
     testing.expectEqual(button_clicked, false);
