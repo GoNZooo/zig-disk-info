@@ -2,7 +2,7 @@ const std = @import("std");
 const mem = std.mem;
 const testing = std.testing;
 
-const State = struct {
+pub const State = struct {
     renderers: []const Renderer,
     hot: ?Id = null,
     active: ?Id = null,
@@ -12,7 +12,7 @@ pub fn makeId(primary: PrimaryId, secondary: SecondaryId) Id {
     return Id{ .primary = primary, .secondary = secondary };
 }
 
-const Id = struct {
+pub const Id = struct {
     primary: PrimaryId,
     secondary: SecondaryId = 0,
 
@@ -21,11 +21,11 @@ const Id = struct {
     }
 };
 
-const Renderer = struct {
+pub const Renderer = struct {
     button: fn (rect: Rect, text: []const u8) void,
 };
 
-const Mouse = struct {
+pub const Mouse = struct {
     x: u32,
     y: u32,
     left_up: bool = false,
@@ -48,17 +48,17 @@ const Mouse = struct {
     }
 };
 
-const Rect = struct {
+pub const Rect = struct {
     x: u32,
     y: u32,
     w: u32,
     h: u32,
 };
 
-const PrimaryId = []const u8;
-const SecondaryId = u32;
+pub const PrimaryId = []const u8;
+pub const SecondaryId = u32;
 
-fn idsEqual(a: ?Id, b: ?Id) bool {
+pub fn idsEqual(a: ?Id, b: ?Id) bool {
     if (a == null or b == null) return false;
 
     return a.?.isEqual(b.?);
@@ -88,9 +88,9 @@ pub fn button(ui: *State, id: Id, rect: Rect, text: []const u8, mouse: Mouse) bo
     return result;
 }
 
-const nullRenderer = Renderer{ .button = nullButton };
+pub const nullRenderer = Renderer{ .button = nullButton };
 
-fn nullButton(rect: Rect, text: []const u8) void {
+pub fn nullButton(rect: Rect, text: []const u8) void {
     return;
 }
 
