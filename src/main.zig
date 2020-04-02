@@ -152,11 +152,6 @@ export fn windowProcedure(
                                 null,
                                 win32.c.FALSE,
                             );
-
-                            if (invalidate_result != 0) {
-                                // @breakpoint();
-                                win32.c.OutputDebugStringA("Invalidated rect\n");
-                            }
                         },
                         'I' => {
                             const app_state_copy = application_state;
