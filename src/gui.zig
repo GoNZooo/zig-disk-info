@@ -23,7 +23,7 @@ pub const Id = struct {
 };
 
 pub const Renderer = struct {
-    button: fn (rect: Rect, text: []const u8) void,
+    button: fn (ui: State, rect: Rect, text: []const u8) void,
 };
 
 pub const Mouse = struct {
@@ -68,7 +68,7 @@ pub fn idsEqual(a: ?Id, b: ?Id) bool {
 pub fn button(ui: *State, id: Id, rect: Rect, text: []const u8) bool {
     var result = false;
     for (ui.renderers) |r| {
-        r.button(rect, text);
+        r.button(ui.*, rect, text);
     }
 
     if (idsEqual(ui.active, id)) {
@@ -91,7 +91,7 @@ pub fn button(ui: *State, id: Id, rect: Rect, text: []const u8) bool {
 
 pub const nullRenderer = Renderer{ .button = nullButton };
 
-pub fn nullButton(rect: Rect, text: []const u8) void {
+pub fn nullButton(ui: State, rect: Rect, text: []const u8) void {
     return;
 }
 
