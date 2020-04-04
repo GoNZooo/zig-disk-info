@@ -85,6 +85,17 @@ const FreeDiskSpaceData = struct {
     pub fn diskSpaceInGibiBytes(self: FreeDiskSpaceData) f64 {
         return @intToFloat(f64, self.diskSpaceInBytes()) / (1024.0 * 1024.0 * 1024.0);
     }
+
+    pub fn openInExplorer(self: FreeDiskSpaceData) void {
+        _ = win32.c.ShellExecute(
+            null,
+            "open",
+            self.root_name[0..],
+            null,
+            null,
+            win32.c.SW_SHOWDEFAULT,
+        );
+    }
 };
 
 pub const FreeDiskSpaceResult = union(enum) {
