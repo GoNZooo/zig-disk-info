@@ -188,16 +188,7 @@ export fn windowProcedure(
                         };
                         win32.c.OutputDebugStringA(output_string.ptr);
                         switch (result) {
-                            .FreeDiskSpace => |r| {
-                                _ = win32.c.ShellExecute(
-                                    null,
-                                    "open",
-                                    r.root_name[0..],
-                                    null,
-                                    null,
-                                    win32.c.SW_SHOWDEFAULT,
-                                );
-                            },
+                            .FreeDiskSpace => |r| r.openInExplorer(),
                             .UnableToGetDiskInfo => {},
                         }
                     }
