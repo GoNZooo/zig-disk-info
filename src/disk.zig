@@ -4,10 +4,63 @@ const memory = std.mem;
 const ArenaAllocator = std.heap.ArenaAllocator;
 const assert = std.debug.assert;
 const warn = std.debug.warn;
-const expect = std.testing.expect;
+const testing = std.testing;
 const win32 = @import("win32");
 const time = std.time;
 const debug = std.debug;
+
+pub fn getAllDriveInfos(allocator: *memory.Allocator) ![]DriveInfo {
+    const root_names = try enumerateDrives(allocator);
+
+    return try getDriveInfos(allocator, root_names);
+}
+
+test "`getAllDriveInfos`" {
+    const allocator = std.heap.page_allocator;
+    const drive_infos = try getAllDriveInfos(allocator);
+    testing.expect(drive_infos.len != 0);
+}
+
+pub fn getDriveInfos(allocator: *memory.Allocator, root_names: []RootPathName) ![]DriveInfo {
+    var drive_infos = try allocator.alloc(DriveInfo, root_names.len);
+    var free_disk_space_entries = try getFreeDiskSpace(allocator, root_names);
+    for (drive_infos) |*di, i| {
+        di.root_name = root_names[i];
+        di.drive_type = getDriveType(di.root_name);
+        di.free_disk_space = free_disk_space_entries[i];
+    }
+
+    return drive_infos;
+}
+
+pub fn getDriveInfo(allocator: *memory.Allocator, root_name: RootPathName) !DriveInfo {
+    const drive_infos = try getDriveInfos(allocator, &[_]RootPathName{root_name});
+
+    return drive_infos[0];
+}
+
+test "`getDriveInfo`" {
+    const allocator = std.heap.page_allocator;
+    const c_drive_info = try getDriveInfo(allocator, [_]u8{ 'C', ':', '\\', 0 });
+    testing.expectEqual(c_drive_info.drive_type, .Fixed);
+}
+
+pub const DriveInfo = struct {
+    root_name: RootPathName,
+    drive_type: DriveType,
+    free_disk_space: FreeDiskSpaceResult,
+
+    pub fn openInExplorer(self: DriveInfo) void {
+        _ = win32.c.ShellExecute(
+            null,
+            "open",
+            self.root_name[0..],
+            null,
+            null,
+            win32.c.SW_SHOWDEFAULT,
+        );
+    }
+};
 
 pub const DriveType = enum {
     Unknown = 0,
@@ -21,8 +74,12 @@ pub const DriveType = enum {
 
 pub const RootPathName = [4]u8;
 
+pub const FreeDiskSpaceResult = union(enum) {
+    FreeDiskSpace: FreeDiskSpaceData,
+    UnableToGetDiskInfo: RootPathName,
+};
+
 const FreeDiskSpaceData = struct {
-    root_name: RootPathName,
     sectors_per_cluster: u32,
     bytes_per_sector: u32,
     number_of_free_clusters: u32,
@@ -87,32 +144,16 @@ const FreeDiskSpaceData = struct {
     pub fn diskSpaceInGibiBytes(self: FreeDiskSpaceData) f64 {
         return @intToFloat(f64, self.diskSpaceInBytes()) / (1024.0 * 1024.0 * 1024.0);
     }
-
-    pub fn openInExplorer(self: FreeDiskSpaceData) void {
-        _ = win32.c.ShellExecute(
-            null,
-            "open",
-            self.root_name[0..],
-            null,
-            null,
-            win32.c.SW_SHOWDEFAULT,
-        );
-    }
-};
-
-pub const FreeDiskSpaceResult = union(enum) {
-    FreeDiskSpace: FreeDiskSpaceData,
-    UnableToGetDiskInfo: RootPathName,
 };
 
 test "`getDriveType`" {
     const drives = try enumerateDrives(std.heap.direct_allocator);
-    const first_drive = getDriveType(&drives[0]);
-    expect(first_drive == DriveType.Fixed);
+    const first_drive = getDriveType(drives[0]);
+    testing.expect(first_drive == DriveType.Fixed);
 }
 
-pub fn getDriveType(root_path_name: [*]const u8) DriveType {
-    return @intToEnum(DriveType, @intCast(u3, win32.c.GetDriveTypeA(root_path_name)));
+pub fn getDriveType(root_path_name: RootPathName) DriveType {
+    return @intToEnum(DriveType, @intCast(u3, win32.c.GetDriveTypeA(&root_path_name)));
 }
 
 test "`enumerateDrives`" {
@@ -120,12 +161,12 @@ test "`enumerateDrives`" {
     defer arena_allocator.deinit();
     const allocator = &arena_allocator.allocator;
     const result = try enumerateDrives(allocator);
-    expect(result.len != 0);
+    testing.expect(result.len != 0);
 }
 
 test "`enumerateDrives` with direct allocator" {
     const result = try enumerateDrives(std.heap.direct_allocator);
-    expect(result.len != 0);
+    testing.expect(result.len != 0);
 }
 
 pub fn enumerateDrives(allocator: *memory.Allocator) error{OutOfMemory}![]RootPathName {
@@ -151,28 +192,29 @@ pub fn enumerateDrives(allocator: *memory.Allocator) error{OutOfMemory}![]RootPa
     return logical_drive_bytes;
 }
 
-test "`getFreeDiskSpace` doesn't leak memory" {
-    const allocator = std.heap.page_allocator;
-    const drives = try enumerateDrives(allocator);
+// uncomment to check memory usage
+// test "`getFreeDiskSpace` doesn't leak memory" {
+//     const allocator = std.heap.page_allocator;
+//     const drives = try enumerateDrives(allocator);
 
-    var i: usize = 0;
-    while (i < 10) : (i += 1) {
-        debug.warn("\nRunning: {}\n", .{i});
-        var j: usize = 0;
-        while (j < 10000) : (j += 1) {
-            const disk_data = try getFreeDiskSpace(allocator, drives);
-            allocator.free(disk_data);
-        }
-        time.sleep(10000000);
-    }
-}
+//     var i: usize = 0;
+//     while (i < 10) : (i += 1) {
+//         debug.warn("\nRunning: {}\n", .{i});
+//         var j: usize = 0;
+//         while (j < 10000) : (j += 1) {
+//             const disk_data = try getFreeDiskSpace(allocator, drives);
+//             allocator.free(disk_data);
+//         }
+//         time.sleep(10000000);
+//     }
+// }
 
 test "calculations for free disk space in 'bytes' make sense" {
     const allocator = std.heap.direct_allocator;
     const result = try enumerateDrives(allocator);
     const free_disk_space_entries = try getFreeDiskSpace(allocator, result);
     var at_least_one_ok = false;
-    expect(free_disk_space_entries.len != 0);
+    testing.expect(free_disk_space_entries.len != 0);
     for (free_disk_space_entries) |free_disk_space_entry| {
         switch (free_disk_space_entry) {
             .FreeDiskSpace => |free_disk_space| {
@@ -193,17 +235,16 @@ test "calculations for free disk space in 'bytes' make sense" {
             .UnableToGetDiskInfo => {},
         }
     }
-    expect(at_least_one_ok);
+    testing.expect(at_least_one_ok);
 }
 
 test "calculations for free disk space in '{ki,me,gi}bibytes' make sense" {
     const allocator = std.heap.direct_allocator;
     const result = try enumerateDrives(allocator);
     const free_disk_space_entries = try getFreeDiskSpace(allocator, result);
-    expect(free_disk_space_entries.len != 0);
+    testing.expect(free_disk_space_entries.len != 0);
     var at_least_one_ok = false;
     const free_data = FreeDiskSpaceData{
-        .root_name = [4]u8{ 'C', ':', '\\', '\\' },
         .sectors_per_cluster = 1,
         .bytes_per_sector = 1000,
         .number_of_free_clusters = 1,
@@ -238,7 +279,7 @@ test "calculations for free disk space in '{ki,me,gi}bibytes' make sense" {
             .UnableToGetDiskInfo => {},
         }
     }
-    expect(at_least_one_ok);
+    testing.expect(at_least_one_ok);
 }
 
 pub fn getFreeDiskSpace(
@@ -264,7 +305,6 @@ pub fn getFreeDiskSpace(
             0 => disk_data[i] = FreeDiskSpaceResult{ .UnableToGetDiskInfo = name },
             else => disk_data[i] = FreeDiskSpaceResult{
                 .FreeDiskSpace = FreeDiskSpaceData{
-                    .root_name = name,
                     .sectors_per_cluster = sectors_per_cluster,
                     .bytes_per_sector = bytes_per_sector,
                     .number_of_free_clusters = number_of_free_clusters,
@@ -279,5 +319,5 @@ pub fn getFreeDiskSpace(
 
 fn expectApproximatelyEqual(tolerance: f64, a: f64, b: f64) void {
     const diff = @fabs(a - b);
-    expect(diff < tolerance);
+    testing.expect(diff < tolerance);
 }

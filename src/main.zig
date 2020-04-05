@@ -9,14 +9,14 @@ const fmt = std.fmt;
 const utilities = @import("./utilities.zig");
 
 const ApplicationState = struct {
-    disk_data: ?[]disk.FreeDiskSpaceResult,
+    drive_infos: ?[]disk.DriveInfo,
     mouse_x: u32,
     mouse_y: u32,
 };
 
 var application_state: ApplicationState = undefined;
 
-var disk_info_arena_allocator = heap.ArenaAllocator.init(heap.page_allocator);
+var drive_info_arena_allocator = heap.ArenaAllocator.init(heap.page_allocator);
 
 export fn windowProcedure(
     window: win32.c.HWND,
@@ -25,7 +25,7 @@ export fn windowProcedure(
     lParam: win32.c.LPARAM,
 ) win32.c.LRESULT {
     var arena_allocator = heap.ArenaAllocator.init(heap.page_allocator);
-    const disk_info_allocator = &disk_info_arena_allocator.allocator;
+    const drive_info_allocator = &drive_info_arena_allocator.allocator;
     defer arena_allocator.deinit();
     const allocator = &arena_allocator.allocator;
     switch (message) {
@@ -61,16 +61,16 @@ export fn windowProcedure(
 
             const black_pen = @intCast(c_ulong, @ptrToInt(win32.c.GetStockObject(win32.c.BLACK_PEN)));
             _ = win32.c.SetDCPenColor(device_context, black_pen);
-            if (application_state.disk_data) |data| {
+            if (application_state.drive_infos) |data| {
                 const current_x: c_int = 5;
                 var current_y: c_int = 2;
-                for (data) |result| {
-                    const result_string = switch (result) {
+                for (data) |drive_info| {
+                    const result_string = switch (drive_info.free_disk_space) {
                         .FreeDiskSpace => |r| fmt.allocPrint(
                             allocator,
                             "{}: {d:>9.3} GiB / {d:>9.3} GiB\x00",
                             .{
-                                r.root_name,
+                                drive_info.root_name,
                                 r.freeDiskSpaceInGibiBytes(),
                                 r.diskSpaceInGibiBytes(),
                             },
@@ -124,23 +124,24 @@ export fn windowProcedure(
                 ALPHA_START...ALPHA_END => {
                     switch (virtual_key_code) {
                         'U' => {
-                            if (application_state.disk_data) |data| {
-                                disk_info_allocator.free(data);
+                            if (application_state.drive_infos) |drive_infos| {
+                                drive_info_allocator.free(drive_infos);
                             }
-                            const root_names = disk.enumerateDrives(disk_info_allocator) catch |e| {
+                            const root_names = disk.enumerateDrives(
+                                drive_info_allocator,
+                            ) catch |e| {
                                 switch (e) {
                                     error.OutOfMemory => @panic("Cannot get disk drives, OOM"),
                                 }
                             };
-                            const free_disk_space_results = disk.getFreeDiskSpace(
-                                disk_info_allocator,
-                                root_names,
+                            const drive_infos = disk.getAllDriveInfos(
+                                drive_info_allocator,
                             ) catch |e| {
                                 switch (e) {
                                     error.OutOfMemory => @panic("Cannot get free disk space, OOM"),
                                 }
                             };
-                            application_state.disk_data = free_disk_space_results;
+                            application_state.drive_infos = drive_infos;
                             const state_string = fmt.allocPrint(
                                 allocator,
                                 "state: {}\x00",
@@ -171,14 +172,14 @@ export fn windowProcedure(
             const current_x: c_int = 5;
             var current_y: c_int = 2;
             const height = 20;
-            if (application_state.disk_data) |data| {
-                for (data) |result| {
+            if (application_state.drive_infos) |drive_infos| {
+                for (drive_infos) |drive_info| {
                     if (y > current_y and y < (current_y + height)) {
-                        const output_string = switch (result) {
+                        const output_string = switch (drive_info.free_disk_space) {
                             .FreeDiskSpace => |r| fmt.allocPrint(
                                 allocator,
                                 "click: {}\n\x00",
-                                .{r.root_name},
+                                .{drive_info.root_name},
                             ) catch unreachable,
                             .UnableToGetDiskInfo => fmt.allocPrint(
                                 allocator,
@@ -187,8 +188,8 @@ export fn windowProcedure(
                             ) catch unreachable,
                         };
                         win32.c.OutputDebugStringA(output_string.ptr);
-                        switch (result) {
-                            .FreeDiskSpace => |r| r.openInExplorer(),
+                        switch (drive_info.free_disk_space) {
+                            .FreeDiskSpace => |_| drive_info.openInExplorer(),
                             .UnableToGetDiskInfo => {},
                         }
                     }
@@ -224,21 +225,18 @@ pub export fn WinMain(
     window_class.hCursor = win32.c.LoadCursorA(null, win32.MAKEINTRESOURCEA(32512));
     window_class.hbrBackground = WHITE_BRUSH;
     const registration = win32.c.RegisterClassA(&window_class);
-    const disk_info_allocator = &disk_info_arena_allocator.allocator;
-    const root_names = disk.enumerateDrives(disk_info_allocator) catch |e| {
+    const drive_info_allocator = &drive_info_arena_allocator.allocator;
+    const root_names = disk.enumerateDrives(drive_info_allocator) catch |e| {
         switch (e) {
             error.OutOfMemory => @panic("Cannot allocate memory, OOM"),
         }
     };
-    const free_disk_space_results = disk.getFreeDiskSpace(
-        disk_info_allocator,
-        root_names,
-    ) catch |e| {
+    const drive_infos = disk.getAllDriveInfos(drive_info_allocator) catch |e| {
         switch (e) {
             error.OutOfMemory => @panic("Cannot allocate memory, OOM"),
         }
     };
-    application_state.disk_data = free_disk_space_results;
+    application_state.drive_infos = drive_infos;
 
     const window = win32.c.CreateWindowExA(
         0,
@@ -248,7 +246,7 @@ pub export fn WinMain(
         30,
         30,
         250,
-        @intCast(c_int, free_disk_space_results.len * 20) + 40,
+        @intCast(c_int, drive_infos.len * 20) + 40,
         null,
         null,
         instance,
