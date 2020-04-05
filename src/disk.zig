@@ -157,13 +157,13 @@ test "`getFreeDiskSpace` doesn't leak memory" {
 
     var i: usize = 0;
     while (i < 10) : (i += 1) {
-        debug.warn("Running: {}\n", .{i});
+        debug.warn("\nRunning: {}\n", .{i});
         var j: usize = 0;
-        while (j < 100000) : (j += 1) {
+        while (j < 10000) : (j += 1) {
             const disk_data = try getFreeDiskSpace(allocator, drives);
             allocator.free(disk_data);
         }
-        time.sleep(1000000000);
+        time.sleep(10000000);
     }
 }
 
@@ -245,16 +245,14 @@ pub fn getFreeDiskSpace(
     allocator: *memory.Allocator,
     root_path_names: []RootPathName,
 ) error{OutOfMemory}![]FreeDiskSpaceResult {
-    const allocated_memory = try allocator.alloc([4]win32.c.ULONG, root_path_names.len);
-    defer allocator.free(allocated_memory);
     const disk_data = try allocator.alloc(FreeDiskSpaceResult, root_path_names.len);
     errdefer allocator.free(disk_data);
 
     for (root_path_names) |name, i| {
-        var sectors_per_cluster = allocated_memory[i][0];
-        var bytes_per_sector = allocated_memory[i][1];
-        var number_of_free_clusters = allocated_memory[i][2];
-        var total_number_of_clusters = allocated_memory[i][3];
+        var sectors_per_cluster: win32.c.ULONG = undefined;
+        var bytes_per_sector: win32.c.ULONG = undefined;
+        var number_of_free_clusters: win32.c.ULONG = undefined;
+        var total_number_of_clusters: win32.c.ULONG = undefined;
         const result = win32.c.GetDiskFreeSpaceA(
             &name,
             &sectors_per_cluster,
