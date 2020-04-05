@@ -6,6 +6,8 @@ const assert = std.debug.assert;
 const warn = std.debug.warn;
 const expect = std.testing.expect;
 const win32 = @import("win32");
+const time = std.time;
+const debug = std.debug;
 
 pub const DriveType = enum {
     Unknown = 0,
@@ -149,6 +151,22 @@ pub fn enumerateDrives(allocator: *memory.Allocator) error{OutOfMemory}![]RootPa
     return logical_drive_bytes;
 }
 
+test "`getFreeDiskSpace` doesn't leak memory" {
+    const allocator = std.heap.page_allocator;
+    const drives = try enumerateDrives(allocator);
+
+    var i: usize = 0;
+    while (i < 10) : (i += 1) {
+        debug.warn("Running: {}\n", .{i});
+        var j: usize = 0;
+        while (j < 100000) : (j += 1) {
+            const disk_data = try getFreeDiskSpace(allocator, drives);
+            allocator.free(disk_data);
+        }
+        time.sleep(1000000000);
+    }
+}
+
 test "calculations for free disk space in 'bytes' make sense" {
     const allocator = std.heap.direct_allocator;
     const result = try enumerateDrives(allocator);
@@ -228,7 +246,7 @@ pub fn getFreeDiskSpace(
     root_path_names: []RootPathName,
 ) error{OutOfMemory}![]FreeDiskSpaceResult {
     const allocated_memory = try allocator.alloc([4]win32.c.ULONG, root_path_names.len);
-    errdefer allocator.free(allocated_memory);
+    defer allocator.free(allocated_memory);
     const disk_data = try allocator.alloc(FreeDiskSpaceResult, root_path_names.len);
     errdefer allocator.free(disk_data);
 
