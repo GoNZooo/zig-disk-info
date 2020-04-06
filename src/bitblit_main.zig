@@ -56,8 +56,7 @@ export fn windowProcedure(
             const y = paint_struct.rcPaint.top;
             const height = paint_struct.rcPaint.bottom - paint_struct.rcPaint.top;
             const width = paint_struct.rcPaint.right - paint_struct.rcPaint.left;
-            // 0x00ff0062 = WHITENESS
-            _ = win32.c.PatBlt(device_context, x, y, width, height, 0x00ff0062);
+            _ = win32.c.PatBlt(device_context, x, y, width, height, WHITENESS);
 
             _ = win32.c.EndPaint(window, &paint_struct);
 
@@ -211,3 +210,5 @@ pub export fn WinMain(
 
     return 0;
 }
+
+const WHITENESS = 0x00ff0062;
