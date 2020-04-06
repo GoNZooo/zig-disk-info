@@ -30,7 +30,6 @@ export fn windowProcedure(
     const allocator = &arena_allocator.allocator;
     switch (message) {
         win32.c.WM_DESTROY => {
-            win32.c.OutputDebugStringA("Window destroyed\n");
             win32.c.PostQuitMessage(0);
 
             return 0;
@@ -53,58 +52,12 @@ export fn windowProcedure(
             var paint_struct = utilities.zeroInit(win32.c.PAINTSTRUCT);
             const device_context = win32.c.BeginPaint(window, &paint_struct);
 
-            var client_rect = utilities.zeroInit(win32.c.RECT);
-            _ = win32.c.GetClientRect(window, &client_rect);
-            const rect_string = fmt.allocPrint(allocator, "{}\x00", .{client_rect}) catch unreachable;
-            _ = win32.c.OutputDebugStringA(rect_string.ptr);
-            _ = win32.c.SetBkMode(device_context, win32.c.OPAQUE);
-
-            const black_pen = @intCast(c_ulong, @ptrToInt(win32.c.GetStockObject(win32.c.BLACK_PEN)));
-            _ = win32.c.SetDCPenColor(device_context, black_pen);
-            if (application_state.drive_infos) |data| {
-                const current_x: c_int = 5;
-                var current_y: c_int = 2;
-                for (data) |drive_info| {
-                    const result_string = switch (drive_info.free_disk_space) {
-                        .FreeDiskSpace => |r| fmt.allocPrint(
-                            allocator,
-                            "{}: {d:>9.3} GiB / {d:>9.3} GiB\x00",
-                            .{
-                                drive_info.root_name,
-                                r.freeDiskSpaceInGibiBytes(),
-                                r.diskSpaceInGibiBytes(),
-                            },
-                        ) catch |e| block: {
-                            break :block switch (e) {
-                                error.OutOfMemory => @panic("OOM"),
-                            };
-                        },
-                        .UnableToGetDiskInfo => |root_name| fmt.allocPrint(
-                            allocator,
-                            "{}: Unable to get disk info\x00",
-                            .{root_name},
-                        ) catch |e| block: {
-                            break :block switch (e) {
-                                error.OutOfMemory => @panic("OOM"),
-                            };
-                        },
-                    };
-                    const text_out_result = win32.c.TextOutA(
-                        device_context,
-                        current_x,
-                        current_y,
-                        result_string[0..].ptr,
-                        @intCast(c_int, result_string.len),
-                    );
-                    _ = win32.c.MoveToEx(
-                        device_context,
-                        0,
-                        current_y,
-                        null,
-                    );
-                    current_y += 20;
-                }
-            }
+            const x = paint_struct.rcPaint.left;
+            const y = paint_struct.rcPaint.top;
+            const height = paint_struct.rcPaint.bottom - paint_struct.rcPaint.top;
+            const width = paint_struct.rcPaint.right - paint_struct.rcPaint.left;
+            // 0x00ff0062 = WHITENESS
+            _ = win32.c.PatBlt(device_context, x, y, width, height, 0x00ff0062);
 
             _ = win32.c.EndPaint(window, &paint_struct);
 
@@ -219,18 +172,15 @@ pub export fn WinMain(
 
     var window_class = utilities.zeroInit(win32.c.WNDCLASS);
     window_class.hInstance = instance;
-    window_class.lpszClassName = "disk-info";
+    window_class.lpszClassName = "di-bitblit";
     window_class.lpfnWndProc = windowProcedure;
-    window_class.style = win32.c.CS_HREDRAW | win32.c.CS_VREDRAW;
+    window_class.style = win32.c.CS_HREDRAW | win32.c.CS_VREDRAW | win32.c.CS_OWNDC;
     window_class.hCursor = win32.c.LoadCursorA(null, win32.MAKEINTRESOURCEA(32512));
     window_class.hbrBackground = WHITE_BRUSH;
     const registration = win32.c.RegisterClassA(&window_class);
+
+    // initialize drive info state
     const drive_info_allocator = &drive_info_arena_allocator.allocator;
-    const root_names = disk.enumerateDrives(drive_info_allocator) catch |e| {
-        switch (e) {
-            error.OutOfMemory => @panic("Cannot allocate memory, OOM"),
-        }
-    };
     const drive_infos = disk.getAllDriveInfos(drive_info_allocator) catch |e| {
         switch (e) {
             error.OutOfMemory => @panic("Cannot allocate memory, OOM"),
@@ -240,19 +190,18 @@ pub export fn WinMain(
 
     const window = win32.c.CreateWindowExA(
         0,
-        "disk-info",
-        "disk-info",
-        win32.c.WS_OVERLAPPEDWINDOW,
-        30,
-        30,
-        250,
-        @intCast(c_int, drive_infos.len * 20) + 40,
+        "di-bitblit",
+        "di-bitblit",
+        win32.c.WS_OVERLAPPEDWINDOW | win32.c.WS_VISIBLE,
+        50,
+        50,
+        640,
+        480,
         null,
         null,
         instance,
         null,
     );
-    const show_window = win32.c.ShowWindow(window, 1);
     var msg = utilities.zeroInit(win32.c.MSG);
     var received_message = win32.c.GetMessageA(&msg, null, 0, 0);
     while (received_message != 0) : (received_message = win32.c.GetMessageA(&msg, null, 0, 0)) {
