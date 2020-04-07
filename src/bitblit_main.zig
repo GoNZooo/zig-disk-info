@@ -119,8 +119,8 @@ export fn windowProcedure(
             return 0;
         },
         win32.c.WM_LBUTTONUP => {
-            const x = lParam & 0xffff;
-            const y = (lParam & 0xffff0000) >> 16;
+            const x = win32.lowWord(win32.c.LPARAM, lParam);
+            const y = win32.highWord(win32.c.LPARAM, lParam & 0xffff0000) >> 16;
             const current_x: c_int = 5;
             var current_y: c_int = 2;
             const height = 20;
