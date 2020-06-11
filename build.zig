@@ -2,11 +2,13 @@ const Builder = @import("std").build.Builder;
 
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
+    const cross_target = b.standardTargetOptions(.{});
     const exe = b.addExecutable("disk-info", "src/main.zig");
     exe.addPackagePath("win32", "./dependencies/zig-win32/src/main.zig");
     exe.linkSystemLibrary("c");
     exe.setBuildMode(mode);
     exe.install();
+    exe.setTarget(cross_target);
     const run_cmd = exe.run();
     run_cmd.step.dependOn(b.getInstallStep());
 

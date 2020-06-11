@@ -213,7 +213,7 @@ pub export fn WinMain(
         win32.c.WHITE_BRUSH,
     )));
 
-    var arena_allocator = heap.ArenaAllocator.init(heap.direct_allocator);
+    var arena_allocator = heap.ArenaAllocator.init(heap.page_allocator);
     defer arena_allocator.deinit();
     const allocator = &arena_allocator.allocator;
 
