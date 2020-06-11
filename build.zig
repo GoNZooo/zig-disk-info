@@ -1,4 +1,5 @@
 const Builder = @import("std").build.Builder;
+const SubSystem = @import("builtin").Target.SubSystem;
 
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
@@ -9,6 +10,7 @@ pub fn build(b: *Builder) void {
     exe.setBuildMode(mode);
     exe.install();
     exe.setTarget(cross_target);
+    exe.subsystem = SubSystem.Windows;
     const run_cmd = exe.run();
     run_cmd.step.dependOn(b.getInstallStep());
 
