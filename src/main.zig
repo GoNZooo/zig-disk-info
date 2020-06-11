@@ -209,6 +209,7 @@ pub export fn WinMain(
     commandLine: windows.LPSTR,
     commandShow: windows.INT,
 ) windows.INT {
+    _ = win32.c.ShowWindow(win32.c.GetConsoleWindow(), win32.c.SW_HIDE);
     const WHITE_BRUSH = @ptrCast(win32.c.HBRUSH, @alignCast(8, win32.c.GetStockObject(
         win32.c.WHITE_BRUSH,
     )));
