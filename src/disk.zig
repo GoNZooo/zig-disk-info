@@ -147,7 +147,7 @@ const FreeDiskSpaceData = struct {
 };
 
 test "`getDriveType`" {
-    const drives = try enumerateDrives(std.heap.direct_allocator);
+    const drives = try enumerateDrives(std.heap.page_allocator);
     const first_drive = getDriveType(drives[0]);
     testing.expect(first_drive == DriveType.Fixed);
 }
@@ -157,7 +157,7 @@ pub fn getDriveType(root_path_name: RootPathName) DriveType {
 }
 
 test "`enumerateDrives`" {
-    var arena_allocator = ArenaAllocator.init(std.heap.direct_allocator);
+    var arena_allocator = ArenaAllocator.init(std.heap.page_allocator);
     defer arena_allocator.deinit();
     const allocator = &arena_allocator.allocator;
     const result = try enumerateDrives(allocator);
@@ -165,7 +165,7 @@ test "`enumerateDrives`" {
 }
 
 test "`enumerateDrives` with direct allocator" {
-    const result = try enumerateDrives(std.heap.direct_allocator);
+    const result = try enumerateDrives(std.heap.page_allocator);
     testing.expect(result.len != 0);
 }
 
@@ -210,7 +210,7 @@ pub fn enumerateDrives(allocator: *memory.Allocator) error{OutOfMemory}![]RootPa
 // }
 
 test "calculations for free disk space in 'bytes' make sense" {
-    const allocator = std.heap.direct_allocator;
+    const allocator = std.heap.page_allocator;
     const result = try enumerateDrives(allocator);
     const free_disk_space_entries = try getFreeDiskSpace(allocator, result);
     var at_least_one_ok = false;
@@ -239,7 +239,7 @@ test "calculations for free disk space in 'bytes' make sense" {
 }
 
 test "calculations for free disk space in '{ki,me,gi}bibytes' make sense" {
-    const allocator = std.heap.direct_allocator;
+    const allocator = std.heap.page_allocator;
     const result = try enumerateDrives(allocator);
     const free_disk_space_entries = try getFreeDiskSpace(allocator, result);
     testing.expect(free_disk_space_entries.len != 0);

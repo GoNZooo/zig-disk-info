@@ -31,6 +31,7 @@ pub fn build(b: *Builder) void {
     tests.addPackagePath("win32", "./dependencies/zig-win32/src/main.zig");
     tests.linkSystemLibrary("c");
     tests.setBuildMode(mode);
+    tests.setTarget(target);
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
