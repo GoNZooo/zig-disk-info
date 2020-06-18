@@ -1,16 +1,18 @@
 const Builder = @import("std").build.Builder;
 const SubSystem = @import("builtin").Target.SubSystem;
+const CrossTarget = @import("std").zig.CrossTarget;
+const Abi = @import("std").Target.Abi;
 
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
-    const cross_target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(.{ .default_target = CrossTarget{ .abi = Abi.gnu } });
 
     const exe = b.addExecutable("disk-info", "src/main.zig");
     exe.addPackagePath("win32", "./dependencies/zig-win32/src/main.zig");
     exe.linkSystemLibrary("c");
     exe.setBuildMode(mode);
     exe.install();
-    exe.setTarget(cross_target);
+    exe.setTarget(target);
     exe.subsystem = SubSystem.Windows;
 
     const run_cmd = exe.run();
@@ -18,9 +20,10 @@ pub fn build(b: *Builder) void {
 
     const bitblit_exe = b.addExecutable("disk-info-bitblit", "src/bitblit_main.zig");
     bitblit_exe.addPackagePath("win32", "./dependencies/zig-win32/src/main.zig");
-    bitblit_exe.linkSystemLibrary("c");
+    bitblit_exe.linkLibC();
     bitblit_exe.setBuildMode(mode);
     bitblit_exe.install();
+    bitblit_exe.setTarget(target);
     const bitblit_run_cmd = bitblit_exe.run();
     bitblit_run_cmd.step.dependOn(b.getInstallStep());
 
