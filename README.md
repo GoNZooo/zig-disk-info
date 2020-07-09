@@ -1,6 +1,6 @@
 # Why?
 
-I needed an excuse to make something in Zig (this was my first project in it)
+I needed an excuse to make something in Zig (this was my second project in it)
 and coincidentally needed a way to see my hard drive usage without waiting for
 Windows to calculate it.
 
