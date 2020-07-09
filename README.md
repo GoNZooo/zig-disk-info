@@ -1,7 +1,8 @@
 # Why?
 
-I needed an excuse to make something in Zig and coincidentally needed a way to
-see my hard drive usage without waiting for Windows to calculate it.
+I needed an excuse to make something in Zig (this was my first project in it)
+and coincidentally needed a way to see my hard drive usage without waiting for
+Windows to calculate it.
 
 I end up using it probably at least a few times a week so it's been useful.
 
