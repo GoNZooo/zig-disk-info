@@ -6,6 +6,7 @@ const warn = std.debug.warn;
 const win32 = @import("win32");
 const windows = std.os.windows;
 const fmt = std.fmt;
+const os = std.os;
 const utilities = @import("./utilities.zig");
 
 const ApplicationState = struct {
@@ -203,10 +204,10 @@ export fn windowProcedure(
     return win32.c.DefWindowProcA(window, message, wParam, lParam);
 }
 
-pub export fn WinMain(
-    instance: win32.c.HINSTANCE,
-    previousInstance: win32.c.HINSTANCE,
-    commandLine: windows.LPSTR,
+pub export fn wWinMain(
+    instance: os.windows.HINSTANCE,
+    previousInstance: ?os.windows.HINSTANCE,
+    commandLine: windows.LPWSTR,
     commandShow: windows.INT,
 ) windows.INT {
     const WHITE_BRUSH = @ptrCast(win32.c.HBRUSH, @alignCast(8, win32.c.GetStockObject(
@@ -218,7 +219,7 @@ pub export fn WinMain(
     const allocator = &arena_allocator.allocator;
 
     var window_class = utilities.zeroInit(win32.c.WNDCLASS);
-    window_class.hInstance = instance;
+    window_class.hInstance = @ptrCast(win32.c.HINSTANCE, @alignCast(4, instance));
     window_class.lpszClassName = "disk-info";
     window_class.lpfnWndProc = windowProcedure;
     window_class.style = win32.c.CS_HREDRAW | win32.c.CS_VREDRAW;
@@ -249,7 +250,7 @@ pub export fn WinMain(
         @intCast(c_int, drive_infos.len * 20) + 40,
         null,
         null,
-        instance,
+        @ptrCast(win32.c.HINSTANCE, @alignCast(4, instance)),
         null,
     );
     const show_window = win32.c.ShowWindow(window, 1);
