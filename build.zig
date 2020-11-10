@@ -18,15 +18,6 @@ pub fn build(b: *Builder) void {
     const run_cmd = exe.run();
     run_cmd.step.dependOn(b.getInstallStep());
 
-    const bitblit_exe = b.addExecutable("disk-info-bitblit", "src/bitblit_main.zig");
-    bitblit_exe.addPackagePath("win32", "./dependencies/zig-win32/src/main.zig");
-    bitblit_exe.linkLibC();
-    bitblit_exe.setBuildMode(mode);
-    bitblit_exe.install();
-    bitblit_exe.setTarget(target);
-    const bitblit_run_cmd = bitblit_exe.run();
-    bitblit_run_cmd.step.dependOn(b.getInstallStep());
-
     var tests = b.addTest("src/disk.zig");
     tests.addPackagePath("win32", "./dependencies/zig-win32/src/main.zig");
     tests.linkSystemLibrary("c");
@@ -35,9 +26,6 @@ pub fn build(b: *Builder) void {
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
-
-    const bitblit_run_step = b.step("run-bitblit", "Run the app with win32 bitblitting");
-    bitblit_run_step.dependOn(&bitblit_run_cmd.step);
 
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&tests.step);
