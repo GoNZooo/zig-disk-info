@@ -5,7 +5,7 @@ const Abi = @import("std").Target.Abi;
 
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
-    const target = b.standardTargetOptions(.{ .default_target = CrossTarget{ .abi = Abi.gnu } });
+    const target = b.standardTargetOptions(.{});
 
     const exe = b.addExecutable("disk-info", "src/main.zig");
     exe.addPackagePath("win32", "./dependencies/zig-win32/src/main.zig");
